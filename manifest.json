@@ -1,0 +1,32 @@
+{
+  "name": "Echt-Check – Ist das Bild echt?",
+  "short_name": "Echt-Check",
+  "description": "Lokaler Fake-Detector für Bilder. Kein Upload, keine Server, 100% privat.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060c1a",
+  "theme_color": "#06b6d4",
+  "lang": "de",
+  "categories": ["utilities", "education"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "image",
+          "accept": ["image/*"]
+        }
+      ]
+    }
+  }
+}
