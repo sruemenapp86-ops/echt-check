@@ -293,14 +293,17 @@ const EchtCheckUI = (() => {
     }
 
     function _setupDeepCheck(file) {
-        // Deep-Check-Sektion einblenden
         document.getElementById('deep-check-section').classList.remove('hidden');
         document.getElementById('deep-check-result').classList.add('hidden');
         document.getElementById('deep-check-error').classList.add('hidden');
 
+        // Gespeicherten Token vorausfüllen
+        const savedToken = localStorage.getItem('hf_token') || '';
+        const tokenInput = document.getElementById('hf-token-input');
+        if (tokenInput) tokenInput.value = savedToken;
+
         const btn = document.getElementById('deep-check-btn');
         btn.onclick = () => {
-            // Privacy-Modal anzeigen
             document.getElementById('privacy-modal').classList.remove('hidden');
 
             document.getElementById('privacy-deny-btn').onclick = () => {
@@ -308,12 +311,15 @@ const EchtCheckUI = (() => {
             };
 
             document.getElementById('privacy-accept-btn').onclick = async () => {
+                const token = (document.getElementById('hf-token-input')?.value || '').trim();
+                if (token) localStorage.setItem('hf_token', token); // lokal speichern
+
                 document.getElementById('privacy-modal').classList.add('hidden');
                 document.getElementById('deep-check-section').classList.add('hidden');
                 document.getElementById('deep-check-loading').classList.remove('hidden');
 
                 try {
-                    const result = await _runDeepCheck(file);
+                    const result = await _runDeepCheck(file, token);
                     _showDeepCheckResult(result);
                 } catch (err) {
                     document.getElementById('deep-check-error-msg').textContent =
@@ -326,27 +332,21 @@ const EchtCheckUI = (() => {
         };
     }
 
-    async function _runDeepCheck(file) {
+    async function _runDeepCheck(file, token) {
         const HF_API = 'https://api-inference.huggingface.co/models/haywoodsloan/ai-image-detector-deploy';
 
-        // Bild als ArrayBuffer an die HF Inference API senden
-        const arrayBuffer = await file.arrayBuffer();
-        const response = await fetch(HF_API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/octet-stream' },
-            body: arrayBuffer
-        });
+        const headers = { 'Content-Type': 'application/octet-stream' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        if (response.status === 503) {
-            throw new Error('Das Modell wird geladen – bitte in ~20 Sekunden erneut versuchen.');
-        }
-        if (!response.ok) {
-            throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
-        }
+        const arrayBuffer = await file.arrayBuffer();
+        const response = await fetch(HF_API, { method: 'POST', headers, body: arrayBuffer });
+
+        if (response.status === 401) throw new Error('Token ungültig oder fehlt. Bitte HuggingFace-Token eingeben.');
+        if (response.status === 503) throw new Error('Modell wird gestartet – bitte in ~20 Sek. erneut versuchen.');
+        if (!response.ok) throw new Error(`API-Fehler: ${response.status} – ${response.statusText}`);
 
         const data = await response.json();
-        // Antwort: [{ label: "real"|"artificial", score: 0.xx }, ...]
-        if (!Array.isArray(data)) throw new Error('Unerwartetes API-Antwortformat.');
+        if (!Array.isArray(data)) throw new Error('Unerwartetes Antwortformat vom Server.');
         return data;
     }
 

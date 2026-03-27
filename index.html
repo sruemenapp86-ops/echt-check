@@ -500,54 +500,6 @@
                     Trefferquote ~65–75 % bei modernen Diffusions-Modellen.
                 </p>
             </div>
-            <!-- Deep Check: Neuronales Netz (opt-in) -->
-            <div id="deep-check-section" class="hidden glass-card p-6 text-center space-y-3">
-                <div class="text-3xl">🤖</div>
-                <h3 class="text-white font-semibold">Echte KI-Analyse mit neuronalem Netz</h3>
-                <p class="text-slate-400 text-sm max-w-sm mx-auto">
-                    Ein speziell trainiertes Modell (F1 98%) prüft das Bild auf KI-Erzeugung.
-                    Dafür wird das Bild <strong class="text-amber-400">einmalig an HuggingFace gesendet</strong> – danach nicht gespeichert.
-                </p>
-                <button id="deep-check-btn"
-                    class="px-6 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold text-sm transition-all active:scale-95">
-                    🔬 Deep Check starten (Upload erforderlich)
-                </button>
-            </div>
-
-            <div id="deep-check-loading" class="hidden glass-card p-6">
-                <div class="flex items-center gap-4">
-                    <div class="spinner" style="width:32px;height:32px;border-width:2px;flex-shrink:0;"></div>
-                    <div>
-                        <p class="text-white font-semibold text-sm">Neuronale Analyse läuft…</p>
-                        <p class="text-slate-500 text-xs mt-0.5">Bild wird an HuggingFace Inference API gesendet</p>
-                    </div>
-                </div>
-            </div>
-
-            <div id="deep-check-result" class="hidden glass-card p-6 space-y-4">
-                <h2 class="text-white font-semibold flex items-center gap-2">
-                    <span class="text-amber-400">🤖</span> Deep Check – Neuronales Netz
-                    <span class="text-xs text-slate-500 font-normal ml-auto">ai-image-detector-deploy</span>
-                </h2>
-                <div id="deep-check-verdict-banner" class="verdict-banner">
-                    <span id="deep-check-icon" class="text-xl"></span>
-                    <span id="deep-check-label"></span>
-                </div>
-                <div>
-                    <div class="flex justify-between text-xs text-slate-500 mb-1.5">
-                        <span>Echtheit-Wahrscheinlichkeit (Netz)</span>
-                        <span id="deep-check-score-text" class="font-mono"></span>
-                    </div>
-                    <div class="score-bar"><div id="deep-check-score-fill" class="score-fill" style="width:0%"></div></div>
-                    <div class="flex justify-between text-xs text-slate-700 mt-1"><span>KI generiert</span><span>Echt</span></div>
-                </div>
-                <p class="text-xs text-slate-600 italic">🔒 Nach der Analyse nicht gespeichert (HuggingFace Inference API).</p>
-            </div>
-
-            <div id="deep-check-error" class="hidden glass-card p-5 border border-red-500/20">
-                <p class="text-red-400 text-sm">⚠️ <span id="deep-check-error-msg"></span></p>
-            </div>
-
             <div class="flex justify-center">
                 <button id="check-another-btn"
                         class="px-8 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-navy-950 font-semibold text-sm transition-all hover:shadow-lg hover:shadow-cyan-500/25 active:scale-95">
@@ -563,27 +515,6 @@
 
     </main>
 
-    <!-- Privacy Modal (für Deep Check) -->
-    <div id="privacy-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.8);backdrop-filter:blur(4px);">
-        <div class="glass-card p-8 max-w-md w-full space-y-5 border border-amber-500/30">
-            <div class="text-4xl text-center">⚠️</div>
-            <h3 class="text-white font-bold text-center text-lg">Datenschutz-Hinweis</h3>
-            <p class="text-slate-400 text-sm leading-relaxed">
-                Für den Deep Check wird das Bild <strong class="text-white">einmalig an die HuggingFace Inference API</strong> übertragen.
-            </p>
-            <ul class="text-slate-400 text-xs space-y-1 list-disc list-inside">
-                <li>Das Bild verlässt kurz deinen Browser</li>
-                <li>Es wird auf HuggingFace-Servern <strong class="text-white">nicht gespeichert</strong></li>
-                <li>Kein Account erforderlich · Kostenlos · Rate-limited</li>
-            </ul>
-            <div class="flex gap-3">
-                <button id="privacy-deny-btn" class="flex-1 py-2.5 rounded-lg border border-white/10 text-slate-400 text-sm hover:bg-white/5 transition-all">Abbrechen</button>
-                <button id="privacy-accept-btn" class="flex-1 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold text-sm transition-all">Ich verstehe – starten</button>
-            </div>
-        </div>
-    </div>
-
-
     <!-- Footer -->
     <footer class="border-t border-white/5 py-8 text-center text-xs text-slate-600">
         <div class="max-w-5xl mx-auto px-6">
@@ -592,10 +523,11 @@
                 Open Source · Zero-Trace · Keine Cookies · Keine Tracker
             </p>
             <p class="mt-2">
-                Phase 1: Metadaten | Phase 2: ELA-Scanner | Phase 3: Frequenzanalyse | Deep Check: Neuronales Netz
+                Phase 1: Metadaten · Phase 2: ELA-Scanner · Phase 3: Frequenzanalyse
             </p>
         </div>
     </footer>
+
 
 </div>
 
