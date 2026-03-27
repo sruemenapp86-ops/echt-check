@@ -61,15 +61,26 @@ const EchtCheckUI = (() => {
             const result = await EchtCheckEngine.analyzeFile(file);
             _showResults(result, file);
 
-            // Phase 2: Struktur-Scanner (nach Phase 1, parallel starten)
+            // Phase 2: ELA Struktur-Scanner
             document.getElementById('phase2-loading').classList.remove('hidden');
             try {
                 const scanResult = await EchtCheckScanner.scan(file);
                 _showPhase2Results(scanResult);
-            } catch (scanErr) {
-                console.warn('Phase 2 Scanner Fehler:', scanErr);
+            } catch (e) {
+                console.warn('Phase 2 Fehler:', e);
             } finally {
                 document.getElementById('phase2-loading').classList.add('hidden');
+            }
+
+            // Phase 3: Frequenz- & Strukturanalyse
+            document.getElementById('phase3-loading').classList.remove('hidden');
+            try {
+                const aiResult = await EchtCheckAIDetector.detect(file);
+                _showPhase3Results(aiResult);
+            } catch (e) {
+                console.warn('Phase 3 Fehler:', e);
+            } finally {
+                document.getElementById('phase3-loading').classList.add('hidden');
             }
 
         } catch (error) {
@@ -243,11 +254,48 @@ const EchtCheckUI = (() => {
         document.getElementById('phase2-result').classList.remove('hidden');
     }
 
+    function _showPhase3Results(ai) {
+        // Verdict
+        const banner = document.getElementById('phase3-verdict-banner');
+        banner.className = `verdict-banner verdict-${ai.verdict.level}`;
+        document.getElementById('phase3-verdict-icon').textContent = ai.verdict.icon;
+        document.getElementById('phase3-verdict-label').textContent = ai.verdict.label;
+
+        // Score
+        const fill = document.getElementById('phase3-score-fill');
+        fill.style.width = '0%';
+        fill.className = `score-fill score-${ai.verdict.level}`;
+        setTimeout(() => { fill.style.width = ai.score + '%'; }, 100);
+        document.getElementById('phase3-score-text').textContent = ai.score + ' / 100';
+
+        // Signal-Cards (4 Analyse-Module)
+        const grid = document.getElementById('phase3-signals');
+        grid.innerHTML = '';
+        const signals = [ai.periodicity, ai.smoothness, ai.colorStats, ai.checkerboard];
+        for (const sig of signals) {
+            const level = sig.suspicion > 60 ? 'danger' : sig.suspicion > 40 ? 'warning' : 'safe';
+            const card = document.createElement('div');
+            card.className = `flag-card flag-${level}`;
+            card.innerHTML = `
+                <div class="flag-header">
+                    <span class="flag-icon">${level === 'danger' ? '🔴' : level === 'warning' ? '⚠️' : '✅'}</span>
+                    <span class="flag-title">${sig.label}</span>
+                </div>
+                <p class="flag-detail">${sig.interpretation}</p>
+            `;
+            grid.appendChild(card);
+        }
+
+        document.getElementById('phase3-result').classList.remove('hidden');
+    }
+
     function _reset() {
         document.getElementById('result-state').classList.add('hidden');
         document.getElementById('error-state').classList.add('hidden');
         document.getElementById('phase2-loading').classList.add('hidden');
         document.getElementById('phase2-result').classList.add('hidden');
+        document.getElementById('phase3-loading').classList.add('hidden');
+        document.getElementById('phase3-result').classList.add('hidden');
         document.getElementById('welcome-state').classList.remove('hidden');
         if (currentObjectUrl) {
             URL.revokeObjectURL(currentObjectUrl);
