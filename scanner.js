@@ -125,15 +125,27 @@ const EchtCheckScanner = (() => {
             const variance = diffs.reduce((s, d) => s + (d - mean) ** 2, 0) / diffs.length;
             const stdDev = Math.sqrt(variance);
 
-            const suspicion = _elaToSuspicion(mean, stdDev, fileType);
+            // Sortiert für Perzentil-Analyse (erkennt lokalisierte Hotspots)
+            const sorted = [...diffs].sort((a, b) => a - b);
+            const p95 = sorted[Math.floor(sorted.length * 0.95)]; // obere 5%
+            const p99 = sorted[Math.floor(sorted.length * 0.99)]; // obere 1%
+
+            // Verhältnis hoher Abweichungen zu Durchschnitt
+            // Hoch = lokalisierte Hotspots → Hinweis auf Copy-Paste / Compositing
+            const hotspotRatio = mean > 0.1 ? p95 / mean : 0;
+            const spikeRatio = mean > 0.1 ? p99 / mean : 0;
+
+            const suspicion = _elaToSuspicion(mean, stdDev, hotspotRatio, spikeRatio, fileType);
 
             return {
                 available: true,
                 elaCanvas,
                 mean: mean.toFixed(2),
                 stdDev: stdDev.toFixed(2),
+                p95: p95.toFixed(2),
+                hotspotRatio: hotspotRatio.toFixed(1),
                 suspicion,
-                interpretation: _interpretELA(mean, stdDev, fileType)
+                interpretation: _interpretELA(mean, stdDev, hotspotRatio, fileType)
             };
 
         } catch (e) {
@@ -141,27 +153,43 @@ const EchtCheckScanner = (() => {
         }
     }
 
-    function _elaToSuspicion(mean, stdDev, fileType) {
-        // PNG: ELA weniger zuverlässig (lossless → JPEG-Konvertierung immer auffällig)
+    function _elaToSuspicion(mean, stdDev, hotspotRatio, spikeRatio, fileType) {
         if (fileType === 'image/png') {
-            if (mean < 2 && stdDev < 2) return 72;  // Extrem glatt → verdächtig
-            return 48; // Neutral bei PNGs
+            // PNG: ELA immer auffällig wegen Lossless → JPEG Konvertierung
+            if (mean < 2 && stdDev < 2) return 72;
+            return 48;
         }
-        // JPEG:
-        if (mean < 1.5 && stdDev < 1.5) return 78;  // Unnatürlich uniform → KI-typisch
-        if (mean < 4   && stdDev < 3.5) return 65;  // Sehr glatt
-        if (mean > 20  && stdDev > 15)  return 62;  // Stark bearbeitet
+
+        // === MUSTER 1: Copy-Paste / Compositing ===
+        // Lokalisierte Hotspots: Durchschnitt niedrig, aber Spitzen sehr hoch
+        // hotspotRatio > 8 bedeutet: p95-Wert ist 8x höher als Durchschnitt
+        if (hotspotRatio > 10 && mean < 5) return 82; // Starke lokale Auffälligkeiten
+        if (hotspotRatio > 7  && mean < 6) return 72; // Deutliche lokale Auffälligkeiten
+        if (hotspotRatio > 5  && mean < 8) return 62; // Mäßige lokale Auffälligkeiten
+
+        // === MUSTER 2: KI-generiert ===
+        // Sehr gleichmäßig niedrig → kein Kompressionsunterschied irgendwo
+        if (mean < 1.5 && stdDev < 1.5) return 80;
+        if (mean < 4   && stdDev < 3.5) return 65;
+
+        // === MUSTER 3: Stark bearbeitet / vielfach gespeichert ===
+        if (mean > 20 && stdDev > 15) return 60;
+
         return 38; // Normaler Bereich
     }
 
-    function _interpretELA(mean, stdDev, fileType) {
+    function _interpretELA(mean, stdDev, hotspotRatio, fileType) {
         if (fileType === 'image/png') {
             if (mean < 2 && stdDev < 2) return 'PNG mit unnatürlich gleichmäßiger Struktur – KI-Verdacht.';
             return 'PNG-Datei: ELA-Aussagekraft eingeschränkt (verlustfreies Format).';
         }
+        // Lokalisierte Hotspots = Compositing-Verdacht
+        if (hotspotRatio > 10 && mean < 5) return '⚠️ Starke lokalisierte ELA-Hotspots – typisch für Copy-Paste-Compositing. Bestimmte Bildbereiche haben eine andere Kompressionsgeschichte als der Rest.';
+        if (hotspotRatio > 7  && mean < 6) return '⚠️ Deutliche lokale ELA-Abweichungen – Hinweis auf eingefügte Elemente oder Compositing.';
+        if (hotspotRatio > 5  && mean < 8) return 'Leicht ungleichmäßige ELA – möglicher Hinweis auf Bildbearbeitung.';
         if (mean < 2 && stdDev < 2) return 'Unnatürlich gleichmäßige Kompressionsstruktur – typisch für KI-generierte Bilder.';
         if (mean < 4 && stdDev < 3.5) return 'Leicht auffällige ELA – möglicher KI-Einfluss oder Social-Media-Kompression.';
-        if (mean > 20 && stdDev > 15)  return 'Hohe ELA-Abweichungen – Hinweis auf starke Bearbeitung.';
+        if (mean > 20 && stdDev > 15)  return 'Hohe ELA-Abweichungen – Hinweis auf starke Bearbeitung oder mehrfaches Speichern.';
         return 'ELA-Werte im normalen Bereich – keine offensichtlichen Anomalien.';
     }
 
