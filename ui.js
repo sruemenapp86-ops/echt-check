@@ -57,8 +57,21 @@ const EchtCheckUI = (() => {
         _showLoading(file);
 
         try {
+            // Phase 1: Metadaten-Analyse
             const result = await EchtCheckEngine.analyzeFile(file);
             _showResults(result, file);
+
+            // Phase 2: Struktur-Scanner (nach Phase 1, parallel starten)
+            document.getElementById('phase2-loading').classList.remove('hidden');
+            try {
+                const scanResult = await EchtCheckScanner.scan(file);
+                _showPhase2Results(scanResult);
+            } catch (scanErr) {
+                console.warn('Phase 2 Scanner Fehler:', scanErr);
+            } finally {
+                document.getElementById('phase2-loading').classList.add('hidden');
+            }
+
         } catch (error) {
             _showError(error.message);
         }
@@ -189,9 +202,52 @@ const EchtCheckUI = (() => {
         return icons[level] || 'ℹ️';
     }
 
+    function _showPhase2Results(scan) {
+        // Phase 2 Verdict
+        const banner = document.getElementById('phase2-verdict-banner');
+        banner.className = `verdict-banner verdict-${scan.verdict.level}`;
+        document.getElementById('phase2-verdict-icon').textContent = scan.verdict.icon;
+        document.getElementById('phase2-verdict-label').textContent = scan.verdict.label;
+
+        // Phase 2 Score
+        const fill = document.getElementById('phase2-score-fill');
+        fill.style.width = '0%';
+        fill.className = `score-fill score-${scan.verdict.level}`;
+        setTimeout(() => { fill.style.width = scan.combinedScore + '%'; }, 100);
+        document.getElementById('phase2-score-text').textContent = scan.combinedScore + ' / 100';
+
+        // ELA Heatmap
+        if (scan.ela.available && scan.ela.elaCanvas) {
+            const displayCanvas = document.getElementById('ela-canvas-display');
+            displayCanvas.width = scan.ela.elaCanvas.width;
+            displayCanvas.height = scan.ela.elaCanvas.height;
+            displayCanvas.getContext('2d').drawImage(scan.ela.elaCanvas, 0, 0);
+            document.getElementById('ela-mean').textContent = scan.ela.mean;
+            document.getElementById('ela-stddev').textContent = scan.ela.stdDev;
+            document.getElementById('ela-interpretation').textContent = scan.ela.interpretation;
+            document.getElementById('phase2-ela-block').classList.remove('hidden');
+        } else {
+            document.getElementById('phase2-ela-block').classList.add('hidden');
+        }
+
+        // Noise
+        document.getElementById('noise-absmean').textContent = scan.noise.absMean;
+        document.getElementById('noise-stddev').textContent = scan.noise.stdDev;
+        document.getElementById('noise-interpretation').textContent = scan.noise.interpretation;
+
+        // Color
+        document.getElementById('color-entropy').textContent = scan.color.entropy;
+        document.getElementById('color-interpretation').textContent = scan.color.interpretation;
+
+        // Show block
+        document.getElementById('phase2-result').classList.remove('hidden');
+    }
+
     function _reset() {
         document.getElementById('result-state').classList.add('hidden');
         document.getElementById('error-state').classList.add('hidden');
+        document.getElementById('phase2-loading').classList.add('hidden');
+        document.getElementById('phase2-result').classList.add('hidden');
         document.getElementById('welcome-state').classList.remove('hidden');
         if (currentObjectUrl) {
             URL.revokeObjectURL(currentObjectUrl);
