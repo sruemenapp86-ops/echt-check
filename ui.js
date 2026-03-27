@@ -141,6 +141,9 @@ const EchtCheckUI = (() => {
         // Reset button
         document.getElementById('check-another-btn').addEventListener('click', _reset, { once: true });
 
+        // Deep Check anzeigen
+        _setupDeepCheck(file);
+
         // Scroll to results
         document.getElementById('result-state').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -289,6 +292,94 @@ const EchtCheckUI = (() => {
         document.getElementById('phase3-result').classList.remove('hidden');
     }
 
+    function _setupDeepCheck(file) {
+        // Deep-Check-Sektion einblenden
+        document.getElementById('deep-check-section').classList.remove('hidden');
+        document.getElementById('deep-check-result').classList.add('hidden');
+        document.getElementById('deep-check-error').classList.add('hidden');
+
+        const btn = document.getElementById('deep-check-btn');
+        btn.onclick = () => {
+            // Privacy-Modal anzeigen
+            document.getElementById('privacy-modal').classList.remove('hidden');
+
+            document.getElementById('privacy-deny-btn').onclick = () => {
+                document.getElementById('privacy-modal').classList.add('hidden');
+            };
+
+            document.getElementById('privacy-accept-btn').onclick = async () => {
+                document.getElementById('privacy-modal').classList.add('hidden');
+                document.getElementById('deep-check-section').classList.add('hidden');
+                document.getElementById('deep-check-loading').classList.remove('hidden');
+
+                try {
+                    const result = await _runDeepCheck(file);
+                    _showDeepCheckResult(result);
+                } catch (err) {
+                    document.getElementById('deep-check-error-msg').textContent =
+                        err.message || 'API-Fehler – bitte später erneut versuchen.';
+                    document.getElementById('deep-check-error').classList.remove('hidden');
+                } finally {
+                    document.getElementById('deep-check-loading').classList.add('hidden');
+                }
+            };
+        };
+    }
+
+    async function _runDeepCheck(file) {
+        const HF_API = 'https://api-inference.huggingface.co/models/haywoodsloan/ai-image-detector-deploy';
+
+        // Bild als ArrayBuffer an die HF Inference API senden
+        const arrayBuffer = await file.arrayBuffer();
+        const response = await fetch(HF_API, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: arrayBuffer
+        });
+
+        if (response.status === 503) {
+            throw new Error('Das Modell wird geladen – bitte in ~20 Sekunden erneut versuchen.');
+        }
+        if (!response.ok) {
+            throw new Error(`API-Fehler: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        // Antwort: [{ label: "real"|"artificial", score: 0.xx }, ...]
+        if (!Array.isArray(data)) throw new Error('Unerwartetes API-Antwortformat.');
+        return data;
+    }
+
+    function _showDeepCheckResult(data) {
+        // Suche nach "real" und "artificial" Labels
+        const realEntry = data.find(d => d.label?.toLowerCase() === 'real') ||
+                          data.find(d => d.label?.toLowerCase().includes('real'));
+        const aiEntry   = data.find(d => d.label?.toLowerCase() === 'artificial') ||
+                          data.find(d => d.label?.toLowerCase().includes('artif') || d.label?.toLowerCase().includes('fake') || d.label?.toLowerCase().includes('ai'));
+
+        const realScore = realEntry ? Math.round(realEntry.score * 100) : (aiEntry ? Math.round((1 - aiEntry.score) * 100) : 50);
+        const isReal = realScore >= 50;
+
+        const level = realScore >= 65 ? 'safe' : realScore >= 40 ? 'warning' : 'danger';
+        const icon  = realScore >= 65 ? '✅' : realScore >= 40 ? '🔎' : '🔴';
+        const label = realScore >= 65 ? 'Wahrscheinlich echt (Neuronales Netz)' :
+                      realScore >= 40 ? 'Nicht eindeutig (Neuronales Netz)' :
+                                        'Wahrscheinlich KI-generiert (Neuronales Netz)';
+
+        const banner = document.getElementById('deep-check-verdict-banner');
+        banner.className = `verdict-banner verdict-${level}`;
+        document.getElementById('deep-check-icon').textContent = icon;
+        document.getElementById('deep-check-label').textContent = label;
+
+        const fill = document.getElementById('deep-check-score-fill');
+        fill.style.width = '0%';
+        fill.className = `score-fill score-${level}`;
+        setTimeout(() => { fill.style.width = realScore + '%'; }, 100);
+        document.getElementById('deep-check-score-text').textContent = realScore + ' / 100';
+
+        document.getElementById('deep-check-result').classList.remove('hidden');
+    }
+
     function _reset() {
         document.getElementById('result-state').classList.add('hidden');
         document.getElementById('error-state').classList.add('hidden');
@@ -296,6 +387,11 @@ const EchtCheckUI = (() => {
         document.getElementById('phase2-result').classList.add('hidden');
         document.getElementById('phase3-loading').classList.add('hidden');
         document.getElementById('phase3-result').classList.add('hidden');
+        document.getElementById('deep-check-section').classList.add('hidden');
+        document.getElementById('deep-check-loading').classList.add('hidden');
+        document.getElementById('deep-check-result').classList.add('hidden');
+        document.getElementById('deep-check-error').classList.add('hidden');
+        document.getElementById('privacy-modal').classList.add('hidden');
         document.getElementById('welcome-state').classList.remove('hidden');
         if (currentObjectUrl) {
             URL.revokeObjectURL(currentObjectUrl);
