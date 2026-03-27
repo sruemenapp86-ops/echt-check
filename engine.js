@@ -104,12 +104,15 @@ const EchtCheckEngine = (() => {
         const softwareLower = exif?.software?.toLowerCase() || '';
 
         // --- FLAG 1: Keine EXIF-Daten ---
+        // HINWEIS: WhatsApp, Instagram, Telegram, Facebook & Co. löschen
+        // automatisch alle EXIF-Daten beim Versenden – auch bei echten Fotos!
+        // Fehlendes EXIF ist daher KEIN Beweis für ein Fake.
         if (!exif || Object.keys(exif).filter(k => k !== 'raw' && exif[k] !== null).length < 3) {
             flags.push({
-                level: 'warning',
+                level: 'info',
                 code: 'NO_EXIF',
-                title: 'Keine EXIF-Daten',
-                detail: 'Das Bild enthält keine technischen Metadaten. Echte Kamera-Aufnahmen haben immer EXIF-Daten. Typisch für Screenshots, Downloads oder bearbeitete Bilder.'
+                title: 'Keine Metadaten vorhanden',
+                detail: 'Das Bild enthält keine technischen Metadaten (EXIF). Das bedeutet nicht automatisch, dass es ein Fake ist – Messenger wie WhatsApp, Telegram oder Instagram löschen diese Daten beim Versenden grundsätzlich. Ohne Metadaten ist keine sichere Aussage möglich.'
             });
         }
 
@@ -141,7 +144,7 @@ const EchtCheckEngine = (() => {
                 level: 'info',
                 code: 'NO_CAMERA_MODEL',
                 title: 'Kein Kamera-Modell',
-                detail: 'Obwohl ein Aufnahmedatum vorhanden ist, fehlen Kamera-Hersteller und -Modell. Dies kann auf Bearbeitung hinweisen.'
+                detail: 'Obwohl ein Aufnahmedatum vorhanden ist, fehlen Kamera-Hersteller und -Modell. Könnte auf nachträgliche Bearbeitung hinweisen, muss es aber nicht.'
             });
         }
 
@@ -155,23 +158,26 @@ const EchtCheckEngine = (() => {
             });
         }
 
-        // --- FLAG 6: Kein Aufnahmedatum ---
-        if (exif && !exif.dateTimeOriginal && !exif.dateTimeDigitized) {
+        // --- FLAG 6: Kein Aufnahmedatum (nur wenn EXIF prinzipiell vorhanden) ---
+        // Wenn gar keine EXIF da sind (z.B. WhatsApp), diesen Flag nicht zusätzlich zeigen
+        if (exif && Object.keys(exif).filter(k => k !== 'raw' && exif[k] !== null).length >= 3
+            && !exif.dateTimeOriginal && !exif.dateTimeDigitized) {
             flags.push({
-                level: 'warning',
+                level: 'info',
                 code: 'NO_DATE',
                 title: 'Kein Aufnahmedatum',
-                detail: 'Es konnte kein originales Aufnahmedatum gefunden werden. Echte Fotos haben fast immer einen Zeitstempel.'
+                detail: 'Es konnte kein originales Aufnahmedatum in den vorhandenen Metadaten gefunden werden.'
             });
         }
 
-        // --- FLAG 7: JPEG ohne EXIF (für KI-generierte häufig) ---
+        // --- FLAG 7: JPEG ohne EXIF – NUR schwacher Hinweis, kein Fake-Beweis ---
+        // (WhatsApp sendet fast immer EXIF-freie JPEGs, auch bei echten Fotos)
         if (file.type === 'image/jpeg' && !exif) {
             flags.push({
-                level: 'danger',
+                level: 'info',
                 code: 'JPEG_NO_EXIF',
-                title: 'JPEG ohne EXIF-Daten',
-                detail: 'Ein JPEG-Bild ohne jegliche EXIF-Metadaten ist ein starker Verdachts-Indikator. KI-Generatoren erzeugen oft EXIF-freie JPEGs.'
+                title: 'JPEG ohne Metadaten',
+                detail: 'Dieses JPEG enthält keine EXIF-Metadaten. Dies ist sehr häufig bei Bildern, die über WhatsApp, Instagram oder andere Messenger weitergeleitet wurden – auch bei echten Fotos. Alleine ist dies kein Fake-Indikator.'
             });
         }
 
@@ -190,18 +196,26 @@ const EchtCheckEngine = (() => {
 
     function _calculateScore(flags) {
         // Score: 0 = definitiv Fake, 100 = definitiv Echt
-        let score = 50; // Neutral-Start
+        // Philosophie: Nur POSITIVE Signale (Kamera-Fingerabdruck, GPS) erhöhen
+        // den Score. Fehlendes EXIF alleine ist KEIN Beweis – Social Media löscht
+        // Metadaten generell. Nur echte Fake-Indikatoren (KI-Tag) senken stark.
+        let score = 50; // Neutral-Start = "nicht bestimmbar"
 
         for (const flag of flags) {
             switch (flag.code) {
-                case 'AI_SOFTWARE_TAG': score -= 40; break;
-                case 'JPEG_NO_EXIF': score -= 25; break;
-                case 'NO_EXIF': score -= 20; break;
-                case 'EDITING_SOFTWARE': score -= 10; break;
-                case 'NO_DATE': score -= 8; break;
-                case 'NO_CAMERA_MODEL': score -= 5; break;
-                case 'GPS_PRESENT': score += 20; break;
-                case 'CAMERA_FINGERPRINT': score += 30; break;
+                // Starke Fake-Signale (es gibt echte Beweise)
+                case 'AI_SOFTWARE_TAG':     score -= 45; break;
+                case 'EDITING_SOFTWARE':    score -= 8;  break;
+
+                // Schwache / mehrdeutige Signale (kein Beweis)
+                case 'JPEG_NO_EXIF':        score -= 5;  break; // WhatsApp-Effekt!
+                case 'NO_EXIF':             score -= 5;  break; // WhatsApp-Effekt!
+                case 'NO_DATE':             score -= 3;  break;
+                case 'NO_CAMERA_MODEL':     score -= 3;  break;
+
+                // Starke Echtheit-Signale (es gibt echte Beweise)
+                case 'GPS_PRESENT':         score += 22; break;
+                case 'CAMERA_FINGERPRINT':  score += 32; break;
             }
         }
 
@@ -210,9 +224,9 @@ const EchtCheckEngine = (() => {
     }
 
     function _getVerdict(score) {
-        if (score >= 75) return { label: 'Wahrscheinlich Echt', level: 'safe', icon: '✅' };
-        if (score >= 45) return { label: 'Unklar – Prüfung empfohlen', level: 'warning', icon: '⚠️' };
-        if (score >= 20) return { label: 'Verdächtig – Wahrscheinlich manipuliert', level: 'danger', icon: '🚨' };
+        if (score >= 72) return { label: 'Wahrscheinlich echt', level: 'safe', icon: '✅' };
+        if (score >= 40) return { label: 'Nicht eindeutig bestimmbar', level: 'warning', icon: '🔎' };
+        if (score >= 15) return { label: 'Verdächtig – mögliche Manipulation', level: 'danger', icon: '🚨' };
         return { label: 'Sehr wahrscheinlich Fake / KI-generiert', level: 'danger', icon: '🔴' };
     }
 
