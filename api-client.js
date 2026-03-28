@@ -1,28 +1,42 @@
 ﻿const EchtCheckAPI = (() => {
-  // Direkt auf DuckDNS (HTTPS-Zertifikat gueltig fuer diese Domain)
   const BASE = 'https://echt-check.duckdns.org:3500';
-  let available = null;
-
+  // Kein Caching - jedes Mal neu pruefen
   async function ping() {
-    if (available !== null) return available;
     try {
-      const r = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(5000) });
-      available = r.ok;
-    } catch (e) { available = false; }
-    return available;
+      const r = await fetch(`${BASE}/health`, {
+        signal: AbortSignal.timeout(6000),
+        cache: 'no-store'
+      });
+      console.log('[EchtCheck API] Health:', r.status, r.ok);
+      return r.ok;
+    } catch (e) {
+      console.warn('[EchtCheck API] Health FEHLER:', e.message);
+      return false;
+    }
   }
 
   async function analyzeImage(file) {
-    if (!await ping()) return null;
+    const isUp = await ping();
+    if (!isUp) { console.warn('[EchtCheck API] Server nicht erreichbar'); return null; }
+    
     try {
+      console.log('[EchtCheck API] Sende Bild:', file.name, file.size, 'bytes');
       const fd = new FormData();
       fd.append('image', file, file.name);
       const r = await fetch(`${BASE}/analyze/image`, {
-        method: 'POST', body: fd, signal: AbortSignal.timeout(30000)
+        method: 'POST',
+        body: fd,
+        signal: AbortSignal.timeout(45000)
       });
-      if (!r.ok) return null;
-      return await r.json();
-    } catch (e) { return null; }
+      console.log('[EchtCheck API] Antwort:', r.status, r.ok);
+      if (!r.ok) { console.warn('[EchtCheck API] HTTP Fehler:', r.status); return null; }
+      const data = await r.json();
+      console.log('[EchtCheck API] Ergebnis:', data);
+      return data;
+    } catch (e) {
+      console.error('[EchtCheck API] POST FEHLER:', e.message);
+      return null;
+    }
   }
 
   async function checkDomain(url) {
