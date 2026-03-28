@@ -401,7 +401,111 @@ const EchtCheckUI = (() => {
     })();
   }
 
-  return { init };
+  // ─── Tab-Switcher ──────────────────────────────────────────────────────────
+  function switchTab(tab) {
+    const isImg = tab === 'image';
+    document.getElementById('tab-panel-image').classList.toggle('hidden', !isImg);
+    document.getElementById('tab-panel-url').classList.toggle('hidden', isImg);
+    document.getElementById('tab-image').className = `px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${isImg ? 'bg-cyan-500 text-slate-900' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`;
+    document.getElementById('tab-url').className = `px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${!isImg ? 'bg-violet-500 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`;
+  }
+
+  // ─── URL-Analyse ───────────────────────────────────────────────────────────
+  async function submitUrl() {
+    const input = document.getElementById('url-input');
+    const url = input?.value?.trim();
+    if (!url) { input?.focus(); return; }
+
+    document.getElementById('welcome-state').classList.add('hidden');
+    document.getElementById('url-result-state').classList.add('hidden');
+    document.getElementById('loading-state').classList.remove('hidden');
+    document.getElementById('loading-filename').textContent = url.replace(/^https?:\/\//, '');
+
+    try {
+      const result = await EchtCheckURLChecker.analyze(url);
+      _showUrlResult(result);
+    } catch(e) {
+      document.getElementById('loading-state').classList.add('hidden');
+      document.getElementById('welcome-state').classList.remove('hidden');
+      alert(`Fehler: ${e.message}`);
+    }
+  }
+
+  function _showUrlResult(result) {
+    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('url-result-state').classList.remove('hidden');
+
+    document.getElementById('url-domain-label').textContent = `🔗 ${result.url}`;
+    document.getElementById('url-title').textContent = result.title || result.domain;
+    document.getElementById('url-description').textContent = result.description || '';
+    if (result.imageUrl) {
+      const img = document.getElementById('url-og-img');
+      img.src = result.imageUrl; img.classList.remove('hidden');
+    }
+
+    // Domain-Signale
+    const domainGrid = document.getElementById('url-domain-signals');
+    const tipEl = domainGrid.querySelector('p');
+    domainGrid.innerHTML = '';
+    const da = result.domainAssessment;
+    for (const sig of (da?.signals || [])) {
+      const el = document.createElement('div');
+      el.className = `flag-card flag-${sig.level}`;
+      el.innerHTML = `<div class="flag-header"><span>${_flagIcon(sig.level)}</span><span>${sig.title}</span></div><p class="flag-detail">${sig.detail}</p>`;
+      domainGrid.appendChild(el);
+    }
+    if (!da?.signals?.length) {
+      const el = document.createElement('div');
+      el.className = 'flag-card flag-safe';
+      el.innerHTML = `<div class="flag-header"><span>✅</span><span>Domain unauffällig</span></div><p class="flag-detail">„${result.domain}" ist nicht als problematische Quelle bekannt.</p>`;
+      domainGrid.appendChild(el);
+    }
+    if (tipEl) domainGrid.appendChild(tipEl);
+    const domLvl = (da?.suspicion || 0) >= 40 ? 'danger' : (da?.suspicion || 0) >= 15 ? 'warning' : 'safe';
+    _setDot(['url-dot-domain'], domLvl);
+    _setBadge('url-badge-domain', domLvl, domLvl === 'safe' ? 'Unauffällig' : domLvl === 'danger' ? 'Auffällig' : 'Prüfen');
+
+    // Textanalyse
+    const ta = result.textAnalysis;
+    const textGrid = document.getElementById('url-text-signals');
+    textGrid.innerHTML = '';
+    document.getElementById('url-extracted-text').textContent = result.text?.slice(0, 2000) || '(kein Text)';
+    if (ta?.valid && ta.signals?.length) {
+      for (const sig of ta.signals) {
+        const el = document.createElement('div');
+        el.className = `flag-card flag-${sig.level}`;
+        el.innerHTML = `<div class="flag-header"><span>${_flagIcon(sig.level)}</span><span>${sig.title}</span></div><p class="flag-detail">${sig.detail}</p>`;
+        textGrid.appendChild(el);
+      }
+    } else {
+      textGrid.innerHTML = '<p class="text-slate-600 text-sm">Zu wenig Text für eine Analyse extrahiert.</p>';
+    }
+    const textLvl = ta?.level || 'info';
+    _setDot(['url-dot-text'], textLvl);
+    _setBadge('url-badge-text', textLvl, ta?.verdict || 'Kein Text');
+    if (ta?.valid) document.getElementById('url-acc-text').open = true;
+
+    // Hero
+    const totalSuspicion = (da?.suspicion || 0) + (ta?.valid ? (100 - (ta.score || 50)) : 0);
+    const heroLevel = totalSuspicion >= 60 ? 'danger' : totalSuspicion >= 25 ? 'warning' : 'safe';
+    const heroLabels = { safe: '✅ Keine schwerwiegenden Auffälligkeiten', warning: '⚠️ Einige Auffälligkeiten', danger: '🚨 Deutliche Warnsignale' };
+    const heroSummary = { safe: 'Domain und Text zeigen keine klaren Merkmale von Falschinformationen.', warning: 'Es gibt Hinweise auf problematische Muster – Quelle und Inhalt sorgfältig prüfen.', danger: 'Mehrere Warnsignale erkannt. Dieser Inhalt weist deutliche Merkmale von Desinformation auf.' };
+    document.getElementById('url-result-hero').className = `glass p-6 border-2 verdict-hero-${heroLevel}`;
+    const vEl = document.getElementById('url-hero-verdict');
+    vEl.className = `badge badge-${heroLevel}`;
+    vEl.textContent = heroLabels[heroLevel];
+    document.getElementById('url-hero-summary').textContent = heroSummary[heroLevel];
+
+    document.getElementById('url-check-another-btn').addEventListener('click', () => {
+      document.getElementById('url-result-state').classList.add('hidden');
+      document.getElementById('welcome-state').classList.remove('hidden');
+      switchTab('url');
+      document.getElementById('url-input').value = '';
+    }, { once: true });
+    document.getElementById('url-result-state').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  return { init, switchTab, submitUrl };
 })();
 
 document.addEventListener('DOMContentLoaded', () => EchtCheckUI.init());

@@ -1,4 +1,4 @@
-﻿const EchtCheckAPI = (() => {
+const EchtCheckAPI = (() => {
   const BASE = 'https://echt-check.duckdns.org:3500';
   // Kein Caching - jedes Mal neu pruefen
   async function ping() {
@@ -42,13 +42,28 @@
   async function checkDomain(url) {
     if (!await ping()) return null;
     try {
-      const r = await fetch(`${BASE}/domain/check?url=${encodeURIComponent(url)}`, {
-        signal: AbortSignal.timeout(8000)
-      });
+      const r = await fetch(`${BASE}/domain/check?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
       if (!r.ok) return null;
       return await r.json();
     } catch (e) { return null; }
   }
 
-  return { ping, analyzeImage, checkDomain };
+  async function analyzeUrl(url) {
+    try {
+      const r = await fetch(`${BASE}/analyze/url`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(20000)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      return data;
+    } catch (e) {
+      console.error('[EchtCheck API] URL-Analyse FEHLER:', e.message);
+      throw e;
+    }
+  }
+
+  return { ping, analyzeImage, checkDomain, analyzeUrl };
 })();
