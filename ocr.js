@@ -25,6 +25,41 @@ const EchtCheckOCR = (() => {
     /\?\!\!+/, /!{3,}/, /\?{3,}/, /!!+\s*!+/
   ];
 
+  // ─── Hass- & Hetze-Erkennung ──────────────────────────────────────────────
+  // Scapegoating: Pauschalvorwürfe gegen Gruppen
+  const SCAPEGOAT_PATTERNS = [
+    { p: /\b(alle|die)\s+(muslime|muslims|ausländer|flüchtlinge|migranten|juden|schwarzen|homosexuellen|frauen|männer)\s+(sind|haben|wollen|machen|bringen|kommen)/i, label: 'Pauschalvorwurf gegen Personengruppe' },
+    { p: /\b(die|der)\s+(islam|islam\s+ist|muslime\s+sind)\b/i, label: 'Pauschalverurteilung einer Religion' },
+    { p: /schuld\s+(der|die|an\s+allem)\s+(ausländer|migranten|juden|flüchtlinge|linken|rechten)/i, label: 'Schuldvorwurf gegen Gruppe' },
+    { p: /\b(diese\s+)?(kriminellen|parasiten|verbrecher)\s+(kommen|sind|werden)\s+(aus|von)/i, label: 'Kriminalisierung einer Gruppe' },
+    { p: /das\s+(volk|land|deutschland|europa)\s+(wird\s+)?(überflutet|islamisiert|verseucht|zerstört|ausgetauscht)/i, label: 'Verschwörungsnarrative gegen Bevölkerungsgruppen' },
+    { p: /\b(bevölkerungsaustausch|umvolkung|islamisierung|überfremdung|dschihad\s+in\s+deutschland)/i, label: 'Verschwörungsbegriff / Rechtsextremer Terminus' },
+    { p: /\b(lügenpresse|gleichschaltung|volksverpetzer|antideutsch|umvolker)\b/i, label: 'Szenespezifischer Hetzvokabular' },
+  ];
+
+  // Entmenschlichung (Dehumanisierung)
+  const DEHUMANIZE_PATTERNS = [
+    { p: /\b(gelichter|gesindel|mob|abschaum|pack|ungeziefer|schädlinge|parasiten|ratten|kakerlaken)\b/i, label: 'Entmenschlichende Sprache' },
+    { p: /\b(untermenschen|unnütze\s+esser|sozialschmarotzer|systemschmarotzer)\b/i, label: 'Dehumanisierender Begriff' },
+    { p: /\b(ausrotten|vernichten|deportieren|abschieben(\s+alle)?|vergasen)\b/i, label: 'Aufruf zu Gewalt oder Deportation' },
+  ];
+
+  // Direkte Hetze & Gewaltaufrufe
+  const INCITEMENT_PATTERNS = [
+    { p: /\b(tötet?|erschießt?|hängt|lyncht|verbrennt)\s+(die|diese|alle)\s+\w+/i, label: 'Direkter Gewaltaufruf' },
+    { p: /\b(deutschland\s+(den\s+)?deutschen|ausländer\s+raus|remigration\s+jetzt)/i, label: 'Hetzslokan / Ausgrenzungsparole' },
+    { p: /\b(kein\s+platz\s+für\s+(muslime|juden|ausländer|linke|schwule))/i, label: 'Ausgrenzung von Personengruppen' },
+    { p: /\bheil\s+hitler|sieg\s+heil|88\s+88|\bns\b.{0,5}regime/i, label: 'Nationalsozialistische Symbolik / Bezug' },
+    { p: /\b(widerstand|gegenwehr|auf\s+die\s+straße|kämpft)\s+(gegen\s+)?(die\s+)?(islam|juden|ausländer|linken|system|regierung)/i, label: 'Aufruf zu Widerstand / Mobilisierung' },
+  ];
+
+  // Diskriminierende Hetze (ohne Wiedergabe der Begriffe selbst)
+  const SLUR_HINTS = [
+    { p: /\bn-wort|\bn\*+r\b/i, label: 'Hinweis auf rassistische Beleidigung' },
+    { p: /\bz-wort\b|\bz\*+\b/i, label: 'Hinweis auf antiziganistischen Begriff' },
+    { p: /\bk\*+l\b|\bk\.\.\.l\b/i, label: 'Hinweis auf antisemitische Beleidigung' },
+  ];
+
   // ─── OCR via Tesseract.js ─────────────────────────────────────────────────
   async function extractText(file, onProgress) {
     if (typeof Tesseract === 'undefined') {
@@ -165,64 +200,72 @@ const EchtCheckOCR = (() => {
       /alle müssen das wissen/i,
       /vergiss nicht zu teilen/i,
       /das\s+musst\s+du\s+(teilen|wissen)/i,
-      /schreib mir wenn/i,
-      /nicht zensiert/i,
-      /bevor es gelöscht wird/i
+      /schreib mir wenn/i, /nicht zensiert/i, /bevor es gelöscht wird/i
     ];
-    const foundChain = chainPatterns.filter(p => p.test(text));
-    if (foundChain.length > 0) {
-      signals.push({
-        level: 'danger',
-        title: 'Kettenpost-Aufforderung',
-        detail: 'Typische "Bitte teilen!"-Formulierung erkannt. Kettenpost verbreitet sich durch soziale Verpflichtung statt durch Inhalt.',
-        suspicion: 85
-      });
+    if (chainPatterns.filter(p => p.test(text)).length > 0) {
+      signals.push({ level: 'danger', title: 'Kettenpost-Aufforderung',
+        detail: 'Typische "Bitte teilen!"-Formulierung erkannt.', suspicion: 85 });
       suspicionScore += 35;
     }
 
-    // Kein Problem gefunden
-    if (signals.filter(s => s.level !== 'safe').length === 0) {
-      signals.push({
-        level: 'safe',
-        title: 'Keine auffälligen Textmuster',
-        detail: 'Der extrahierte Text zeigt keine typischen Merkmale von Falschmeldungen oder Kettenposts.',
-        suspicion: 0
-      });
+    // ─── HETZE & HASS-ERKENNUNG ───────────────────────────────────────────────
+    let hateScore = 0;
+    const hateSignals = [];
+
+    SCAPEGOAT_PATTERNS.filter(({ p }) => p.test(text)).forEach(({ label }) => {
+      hateScore += 20; hateSignals.push(label);
+    });
+    DEHUMANIZE_PATTERNS.filter(({ p }) => p.test(text)).forEach(({ label }) => {
+      hateScore += 35; hateSignals.push(label);
+    });
+    INCITEMENT_PATTERNS.filter(({ p }) => p.test(text)).forEach(({ label }) => {
+      hateScore += 45; hateSignals.push(label);
+    });
+    SLUR_HINTS.filter(({ p }) => p.test(text)).forEach(({ label }) => {
+      hateScore += 30; hateSignals.push(label);
+    });
+
+    if (hateScore >= 80) {
+      signals.unshift({ level: 'danger',
+        title: '🚨 Schwerwiegende Hetze erkannt',
+        detail: `Dieser Text enthält mehrere Merkmale von Hasskommunikation oder Volksverhetzung (§130 StGB): ${hateSignals.slice(0,3).join(' · ')}. Meldung empfohlen: meldestelle-respect.de`,
+        suspicion: 100 });
+      suspicionScore += 60;
+    } else if (hateScore >= 45) {
+      signals.unshift({ level: 'danger',
+        title: '⚠️ Hetze-Muster erkannt',
+        detail: `Sprache, die auf Hasskommunikation hindeutet: ${hateSignals.slice(0,3).join(' · ')}. Kontext beachten und ggf. bei der Plattform melden.`,
+        suspicion: 75 });
+      suspicionScore += 40;
+    } else if (hateScore >= 15) {
+      signals.unshift({ level: 'warning',
+        title: 'Mögliche Hetze-Sprache',
+        detail: `Auffällige Formulierungen: ${hateSignals.join(' · ')}. Allein kein Beweis, aber im Kontext prüfen.`,
+        suspicion: 40 });
+      suspicionScore += 15;
     }
 
-    // Gesamt-Score
+    if (signals.filter(s => s.level !== 'safe').length === 0) {
+      signals.push({ level: 'safe', title: 'Keine auffälligen Textmuster',
+        detail: 'Kein Hinweis auf Falschmeldungen, Kettenpost oder Hasskommunikation.', suspicion: 0 });
+    }
+
     const finalScore = Math.max(0, Math.min(100, 100 - suspicionScore));
     const level = finalScore >= 65 ? 'safe' : finalScore >= 40 ? 'warning' : 'danger';
-    const verdict = {
-      safe:    'Text unauffällig',
-      warning: 'Textmuster auffällig',
-      danger:  'Starke Manipulation erkannt'
-    }[level];
+    const verdict = { safe: 'Text unauffällig', warning: 'Textmuster auffällig',
+      danger: hateScore >= 45 ? 'Hetze erkannt' : 'Starke Manipulation erkannt' }[level];
 
-    return {
-      valid: true,
-      text,
-      score: finalScore,
-      level,
-      verdict,
-      signals,
-      stats: {
-        charCount: text.length,
-        wordCount: text.split(/\s+/).filter(Boolean).length,
-        capsRatio: Math.round(capsRatio * 100),
-        hasSource
-      }
-    };
+    return { valid: true, text, score: finalScore, level, verdict, signals, hateScore,
+      stats: { charCount: text.length, wordCount: text.split(/\s+/).filter(Boolean).length,
+        capsRatio: Math.round(capsRatio * 100), hasSource } };
   }
 
-  // ─── Öffentliche API ───────────────────────────────────────────────────────
   async function detect(file, onProgress) {
     const ocr = await extractText(file, onProgress);
     const analysis = analyzeText(ocr.text);
     return { ...ocr, ...analysis, ocrConfidence: ocr.confidence };
   }
 
-  // Heuristik: Ist das vermutlich ein Screenshot?
   function looksLikeScreenshot(fileType, hasExif) {
     return !hasExif && (fileType === 'image/png' || fileType === 'image/webp');
   }
