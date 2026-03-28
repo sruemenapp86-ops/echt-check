@@ -1,6 +1,6 @@
 const EchtCheckUI = (() => {
   let currentObjectUrl = null;
-  let phaseScores = { p1: null, p2: null, p3: null, p4: null };
+  let phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
 
   // ─── Verdict-Texte ─────────────────────────────────────────────────────────
   const VERDICT_TEXT = {
@@ -92,6 +92,31 @@ const EchtCheckUI = (() => {
         console.warn('Phase3:', e);
         _setDot(['dot-p3','dot-p3b'], 'warning');
         _setBadge('p3-badge', 'warning', 'Fehler');
+      }
+      _updateHero();
+
+      // Phase 5: OCR Textanalyse
+      _setDot(['dot-p5','dot-p5b'], 'loading');
+      document.getElementById('ocr-loading').classList.remove('hidden');
+      if (EchtCheckOCR.looksLikeScreenshot(file.type, !!result.exif?.make)) {
+        document.getElementById('acc-phase5').open = true;
+      }
+      try {
+        const ocr = await EchtCheckOCR.detect(file, pct => {
+          document.getElementById('ocr-progress-fill').style.width = pct + '%';
+        });
+        document.getElementById('ocr-loading').classList.add('hidden');
+        _showPhase5Results(ocr);
+        phaseScores.p5 = ocr.valid ? ocr.score : null;
+        const lvl5 = !ocr.valid ? 'info' : ocr.level;
+        _setDot(['dot-p5','dot-p5b'], lvl5);
+        _setBadge('p5-badge', lvl5, !ocr.valid ? 'Kein Text' : ocr.verdict);
+      } catch(e) {
+        console.warn('OCR:', e);
+        document.getElementById('ocr-loading').classList.add('hidden');
+        document.getElementById('ocr-skipped').classList.remove('hidden');
+        _setDot(['dot-p5','dot-p5b'], 'info');
+        _setBadge('p5-badge', 'info', 'Fehler');
       }
       _updateHero();
 
@@ -195,6 +220,26 @@ const EchtCheckUI = (() => {
 
     document.getElementById('check-another-btn').addEventListener('click', _reset, { once: true });
     document.getElementById('result-state').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ─── Phase 5 OCR ──────────────────────────────────────────────────────────
+  function _showPhase5Results(ocr) {
+    if (!ocr.valid) {
+      document.getElementById('ocr-no-text').classList.remove('hidden');
+      return;
+    }
+    document.getElementById('ocr-text').textContent = ocr.text;
+    document.getElementById('ocr-stats-words').textContent = `${ocr.stats?.wordCount ?? '?'} Wörter erkannt`;
+    document.getElementById('ocr-stats-confidence').textContent = `OCR-Konfidenz: ${ocr.ocrConfidence}%`;
+    const grid = document.getElementById('ocr-signals');
+    grid.innerHTML = '';
+    for (const sig of (ocr.signals || [])) {
+      const el = document.createElement('div');
+      el.className = `flag-card flag-${sig.level}`;
+      el.innerHTML = `<div class="flag-header"><span>${_flagIcon(sig.level)}</span><span>${sig.title}</span></div><p class="flag-detail">${sig.detail}</p>`;
+      grid.appendChild(el);
+    }
+    document.getElementById('ocr-result').classList.remove('hidden');
   }
 
   // ─── Phase-Ergebnis-Renderer ───────────────────────────────────────────────
@@ -314,12 +359,17 @@ const EchtCheckUI = (() => {
     document.getElementById('phase2-ela-block').classList.add('hidden');
     document.getElementById('phase4-result').classList.add('hidden');
     document.getElementById('phase4-offline').classList.add('hidden');
+    document.getElementById('ocr-loading').classList.add('hidden');
+    document.getElementById('ocr-result').classList.add('hidden');
+    document.getElementById('ocr-no-text').classList.add('hidden');
+    document.getElementById('ocr-skipped').classList.add('hidden');
+    document.getElementById('ocr-progress-fill').style.width = '0%';
     // Reset dots
-    for (const id of ['dot-p1','dot-p1b','dot-p2','dot-p2b','dot-p3','dot-p3b','dot-p4','dot-p4b']) {
+    for (const id of ['dot-p1','dot-p1b','dot-p2','dot-p2b','dot-p3','dot-p3b','dot-p4','dot-p4b','dot-p5','dot-p5b']) {
       const el = document.getElementById(id);
       if (el) el.className = 'phase-dot phase-dot-loading';
     }
-    for (const id of ['p1-badge','p2-badge','p3-badge','p4-badge']) {
+    for (const id of ['p1-badge','p2-badge','p3-badge','p4-badge','p5-badge']) {
       const el = document.getElementById(id);
       if (el) { el.className = 'badge badge-muted ml-2'; el.textContent = 'läuft…'; }
     }
@@ -328,7 +378,7 @@ const EchtCheckUI = (() => {
     document.getElementById('hero-score-fill').style.width = '0%';
     document.getElementById('welcome-state').classList.remove('hidden');
     if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
-    phaseScores = { p1: null, p2: null, p3: null, p4: null };
+    phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
