@@ -45,13 +45,6 @@ api-client.js                   ├── KI-Modell (Python/FastAPI)
                                 │   6GB VRAM, CUDA 12.4
                                 │
                                 └── PostgreSQL (Ergebnis-Cache)
-```
-
-**Hosting:**
-- **Frontend:** GitHub Pages → `tool.echt-check.de`
-- **Backend:** Lenovo ThinkPad P52 (lokale Hardware), erreichbar via DuckDNS
-- **SSL:** Let's Encrypt via Certbot
-- **Domain:** `echt-check.duckdns.org` / `tool.echt-check.de`
 
 ---
 
@@ -88,7 +81,7 @@ docker compose up -d
 ### Dienste prüfen
 ```bash
 # API Health
-curl https://echt-check.duckdns.org:3500/health
+
 
 # KI-Modell Status
 docker logs echt-model --tail 10
