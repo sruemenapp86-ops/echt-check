@@ -74,18 +74,39 @@ const EchtCheckOCR = (() => {
       }
     });
 
+    const confidence = Math.round(result.data.confidence);
+
+    // Nur Wörter mit hoher Konfidenz behalten (>= 60%)
+    const goodWords = (result.data.words || []).filter(w =>
+      w.confidence >= 60 && w.text.trim().length >= 2 && /[a-zA-ZäöüÄÖÜ]/.test(w.text)
+    );
+
+    // Sauberer Text aus hochwertigen Wörtern
+    const cleanText = goodWords.map(w => w.text.trim()).join(' ');
+
     return {
-      text: result.data.text.trim(),
-      confidence: Math.round(result.data.confidence),
-      words: result.data.words?.length ?? 0,
-      lines: result.data.lines?.length ?? 0,
+      text: cleanText,
+      rawText: result.data.text.trim(),
+      confidence,
+      wordCount: goodWords.length,
+      rawWordCount: result.data.words?.length ?? 0,
     };
   }
 
   // ─── Linguistische Analyse ────────────────────────────────────────────────
-  function analyzeText(text) {
-    if (!text || text.length < 20) {
-      return { valid: false, reason: 'Zu wenig Text erkannt (< 20 Zeichen).' };
+  function analyzeText(text, confidence = 100, wordCount = 0) {
+    // Mindest-Qualitätsschwellen
+    if (!text || wordCount < 5 || confidence < 45) {
+      return {
+        valid: false,
+        reason: wordCount < 5
+          ? `Zu wenig lesbarer Text erkannt (${wordCount} Wörter) – vermutlich kein Screenshot.`
+          : `OCR-Konfidenz zu gering (${confidence}%) – Text nicht zuverlässig erkannt.`
+      };
+    }
+
+    if (text.length < 15) {
+      return { valid: false, reason: 'Text zu kurz für eine sinnvolle Analyse.' };
     }
 
     const signals = [];
@@ -262,7 +283,7 @@ const EchtCheckOCR = (() => {
 
   async function detect(file, onProgress) {
     const ocr = await extractText(file, onProgress);
-    const analysis = analyzeText(ocr.text);
+    const analysis = analyzeText(ocr.text, ocr.confidence, ocr.wordCount);
     return { ...ocr, ...analysis, ocrConfidence: ocr.confidence };
   }
 
