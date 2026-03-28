@@ -159,10 +159,9 @@ C:\EchtCheck\backend\       # Backend (Docker-Stack)
 
 ---
 
-## 👤 Autor
+## 👤 Über das Projekt
 
-**Stefan Rümenapp
-Entwickelt im Rahmen als eigenständiges Werkzeug zur Bekämpfung von Desinformation.
+Entwickelt als eigenständiges Open-Source-Werkzeug zur Bekämpfung von Desinformation und KI-generierten Fälschungen.
 
 ---
 
