@@ -1,47 +1,86 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Echt-Check – Ist dieses Bild echt?</title>
-<meta name="description" content="Prüfe kostenlos ob ein Bild echt ist oder KI-generiert wurde. 100% lokal + KI-Backend.">
+<meta name="description" content="Prüfe kostenlos ob ein Bild echt ist oder KI-generiert wurde. Forensische Analyse mit KI-Modell.">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <style>
   *{font-family:'Inter',sans-serif;box-sizing:border-box}
-  body{background:#050a14;color:#e2e8f0;min-height:100vh}
-  .glass-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;backdrop-filter:blur(12px)}
-  .verdict-banner{display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:12px;font-weight:600;font-size:15px}
-  .verdict-safe{background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#34d399}
-  .verdict-warning{background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.3);color:#fbbf24}
-  .verdict-danger{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#f87171}
-  .verdict-info{background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc}
-  .score-bar{height:6px;background:rgba(255,255,255,0.08);border-radius:999px;overflow:hidden}
-  .score-fill{height:100%;border-radius:999px;transition:width 0.8s ease}
-  .score-safe{background:linear-gradient(90deg,#10b981,#34d399)}
-  .score-warning{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
-  .score-danger{background:linear-gradient(90deg,#ef4444,#f87171)}
-  .score-info{background:linear-gradient(90deg,#6366f1,#a5b4fc)}
-  .flag-card{padding:12px 16px;border-radius:10px;margin-bottom:8px;border:1px solid transparent}
-  .flag-danger{background:rgba(239,68,68,0.08);border-color:rgba(239,68,68,0.2)}
-  .flag-warning{background:rgba(245,158,11,0.08);border-color:rgba(245,158,11,0.2)}
-  .flag-info{background:rgba(99,102,241,0.08);border-color:rgba(99,102,241,0.2)}
-  .flag-safe{background:rgba(16,185,129,0.08);border-color:rgba(16,185,129,0.2)}
-  .flag-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-weight:500;font-size:13px}
-  .flag-detail{font-size:12px;color:#94a3b8;line-height:1.5}
-  .exif-cell{background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 14px}
-  .exif-label{display:block;font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
-  .exif-value{font-size:13px;color:#e2e8f0;font-weight:500;word-break:break-all}
-  .exif-empty{grid-column:1/-1;text-align:center;color:#475569;font-size:13px;padding:20px}
-  .privacy-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);color:#34d399;padding:6px 14px;border-radius:999px;font-size:12px}
-  .spinner{border:2px solid rgba(255,255,255,0.1);border-top-color:#06b6d4;border-radius:50%;animation:spin .8s linear infinite}
+  body{background:#060c18;color:#e2e8f0;min-height:100vh}
+  .glass{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;backdrop-filter:blur(12px)}
+  .glass-sm{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px}
+
+  /* Verdict Hero */
+  .verdict-hero-safe{background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.06));border-color:rgba(16,185,129,0.25)}
+  .verdict-hero-warning{background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(217,119,6,0.06));border-color:rgba(245,158,11,0.25)}
+  .verdict-hero-danger{background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(185,28,28,0.06));border-color:rgba(239,68,68,0.25)}
+  .verdict-hero-info{background:linear-gradient(135deg,rgba(99,102,241,0.10),rgba(67,56,202,0.05));border-color:rgba(99,102,241,0.2)}
+
+  /* Phase indicator badges */
+  .phase-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0;transition:background 0.3s}
+  .phase-dot-safe{background:#10b981}
+  .phase-dot-warning{background:#f59e0b}
+  .phase-dot-danger{background:#ef4444}
+  .phase-dot-loading{background:rgba(6,182,212,0.5);animation:pulse 1s infinite}
+  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+
+  /* Score bar */
+  .score-bar{height:8px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden}
+  .score-fill{height:100%;border-radius:999px;transition:width 1s cubic-bezier(.4,0,.2,1)}
+  .score-safe{background:linear-gradient(90deg,#059669,#10b981,#34d399)}
+  .score-warning{background:linear-gradient(90deg,#d97706,#f59e0b,#fbbf24)}
+  .score-danger{background:linear-gradient(90deg,#b91c1c,#ef4444,#f87171)}
+  .score-info{background:linear-gradient(90deg,#4338ca,#6366f1,#a5b4fc)}
+
+  /* Phase cards (accordion) */
+  .phase-accordion{background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.06);border-radius:14px;overflow:hidden;transition:border-color .2s}
+  .phase-accordion:hover{border-color:rgba(255,255,255,0.1)}
+  .phase-accordion summary{list-style:none;cursor:pointer;padding:14px 18px;display:flex;align-items:center;gap:12px}
+  .phase-accordion summary::-webkit-details-marker{display:none}
+  .phase-accordion[open] summary{border-bottom:1px solid rgba(255,255,255,0.06)}
+  .phase-accordion-body{padding:18px}
+  .chevron{margin-left:auto;transition:transform .25s;color:#475569;font-size:12px}
+  .phase-accordion[open] .chevron{transform:rotate(180deg)}
+
+  /* Flag cards */
+  .flag-card{padding:11px 14px;border-radius:10px;margin-bottom:6px;border:1px solid transparent}
+  .flag-danger{background:rgba(239,68,68,0.07);border-color:rgba(239,68,68,0.18)}
+  .flag-warning{background:rgba(245,158,11,0.07);border-color:rgba(245,158,11,0.18)}
+  .flag-info{background:rgba(99,102,241,0.07);border-color:rgba(99,102,241,0.18)}
+  .flag-safe{background:rgba(16,185,129,0.07);border-color:rgba(16,185,129,0.18)}
+  .flag-header{display:flex;align-items:center;gap:8px;margin-bottom:3px;font-weight:500;font-size:13px}
+  .flag-detail{font-size:12px;color:#64748b;line-height:1.5;margin-top:2px}
+
+  /* EXIF cells */
+  .exif-cell{background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px}
+  .exif-label{display:block;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+  .exif-value{font-size:12px;color:#cbd5e1;font-weight:500;word-break:break-all}
+  .exif-empty{grid-column:1/-1;text-align:center;color:#334155;font-size:13px;padding:16px}
+
+  /* Misc */
+  .spinner{border:2px solid rgba(255,255,255,0.08);border-top-color:#06b6d4;border-radius:50%;animation:spin .7s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
-  #drop-zone.drag-active{border-color:#06b6d4;background:rgba(6,182,212,0.06)}
-  canvas#particle-canvas{position:fixed;top:0;left:0;pointer-events:none;z-index:0;opacity:.4}
-  .phase-tag{display:inline-block;padding:2px 10px;border-radius:999px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+  #drop-zone.drag-active{border-color:#06b6d4!important;background:rgba(6,182,212,0.04)}
+  canvas#particle-canvas{position:fixed;top:0;left:0;pointer-events:none;z-index:0;opacity:.3}
   .hidden{display:none!important}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px}
+  .badge-safe{background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.2)}
+  .badge-warning{background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.2)}
+  .badge-danger{background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.2)}
+  .badge-info{background:rgba(99,102,241,0.12);color:#a5b4fc;border:1px solid rgba(99,102,241,0.2)}
+  .badge-muted{background:rgba(255,255,255,0.04);color:#475569;border:1px solid rgba(255,255,255,0.08)}
+
+  /* Big verdict number */
+  .verdict-number{font-size:72px;font-weight:900;line-height:1;letter-spacing:-3px}
+  .verdict-number-safe{color:#10b981}
+  .verdict-number-warning{color:#f59e0b}
+  .verdict-number-danger{color:#ef4444}
+  .verdict-number-info{color:#6366f1}
 </style>
 </head>
 <body>
@@ -50,52 +89,58 @@
 
   <!-- Header -->
   <header class="border-b border-white/5 py-4 px-6">
-    <div class="max-w-4xl mx-auto flex items-center justify-between">
+    <div class="max-w-3xl mx-auto flex items-center justify-between">
       <div>
         <span class="text-cyan-400 font-bold text-lg">Echt</span><span class="text-white font-bold text-lg">-Check</span>
-        <span class="text-slate-500 text-xs ml-2">Bild-Forensik v2.0</span>
+        <span class="text-slate-600 text-xs ml-2">Forensik v3.0</span>
       </div>
-      <span class="privacy-badge">🔒 100% lokal – kein Upload</span>
+      <span class="badge badge-info">🔐 Serveranalyse – keine Datenweitergabe</span>
     </div>
   </header>
 
-  <main class="max-w-4xl mx-auto px-6 py-10 space-y-6">
+  <main class="max-w-3xl mx-auto px-4 py-10 space-y-5">
 
     <!-- WELCOME STATE -->
     <div id="welcome-state">
       <div class="text-center mb-10">
         <div class="inline-block bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-6">
-          🔎 Metadaten · ELA-Scanner · Frequenzanalyse · KI-Backend
+          🔎 Metadaten · ELA · Frequenzanalyse · KI-Modell (GPU)
         </div>
         <h1 class="text-5xl font-extrabold text-white mb-4">Ist dieses Bild <span class="text-cyan-400">echt</span>?</h1>
-        <p class="text-slate-400 max-w-xl mx-auto leading-relaxed">
-          Lade ein Bild hoch oder füge es mit <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-xs">Strg+V</kbd> ein.
-          4-stufige Analyse: Metadaten, Bildstruktur, Frequenzmuster und lokale KI.
+        <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
+          Lade ein Bild hoch, ziehe es rein oder füge es mit <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-xs">Strg+V</kbd> ein.<br>
+          Das Ergebnis siehst du sofort – alle technischen Details optional darunter.
         </p>
       </div>
-
-      <div id="drop-zone" class="glass-card border-2 border-dashed border-white/10 rounded-2xl p-14 text-center cursor-pointer hover:border-cyan-500/40 hover:bg-white/[0.02] transition-all">
+      <div id="drop-zone" class="glass border-2 border-dashed border-white/10 rounded-2xl p-14 text-center cursor-pointer hover:border-cyan-500/40 transition-all">
         <div class="text-5xl mb-4">🔍</div>
         <p class="text-white font-semibold text-lg mb-2">Bild hierher ziehen</p>
-        <p class="text-slate-500 text-sm mb-6">oder klicken · oder <kbd class="bg-white/10 px-1.5 py-0.5 rounded">Strg+V</kbd> zum Einfügen</p>
-        <span class="text-xs text-slate-600">JPG · PNG · WebP · HEIC · max 20 MB</span>
+        <p class="text-slate-500 text-sm mb-4">oder klicken · oder <kbd class="bg-white/10 px-1.5 py-0.5 rounded">Strg+V</kbd></p>
+        <span class="text-xs text-slate-600">JPG · PNG · WebP · max 20 MB · Screenshot möglich</span>
         <input id="file-input" type="file" accept="image/*" class="hidden">
       </div>
     </div>
 
     <!-- LOADING STATE -->
-    <div id="loading-state" class="hidden glass-card p-8">
-      <div class="flex items-center gap-5">
+    <div id="loading-state" class="hidden glass p-8">
+      <div class="flex items-center gap-5 mb-6">
         <div class="spinner w-10 h-10 flex-shrink-0"></div>
         <div>
           <p class="text-white font-semibold">Analysiere <span id="loading-filename" class="text-cyan-400"></span></p>
-          <p class="text-slate-500 text-sm mt-1">Phase 1–4 laufen gleichzeitig …</p>
+          <p class="text-slate-500 text-sm mt-1">Alle 4 Analysestufen werden gleichzeitig ausgeführt …</p>
         </div>
+      </div>
+      <!-- Phase progress indicators -->
+      <div class="grid grid-cols-2 gap-2">
+        <div class="glass-sm px-4 py-3 flex items-center gap-3"><div id="ld-p1" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-400">Metadaten</span></div>
+        <div class="glass-sm px-4 py-3 flex items-center gap-3"><div id="ld-p2" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-400">Bildstruktur</span></div>
+        <div class="glass-sm px-4 py-3 flex items-center gap-3"><div id="ld-p3" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-400">Frequenzanalyse</span></div>
+        <div class="glass-sm px-4 py-3 flex items-center gap-3"><div id="ld-p4" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-400">KI-Modell</span></div>
       </div>
     </div>
 
     <!-- ERROR STATE -->
-    <div id="error-state" class="hidden glass-card p-8 text-center space-y-4">
+    <div id="error-state" class="hidden glass p-8 text-center space-y-4">
       <div class="text-5xl">❌</div>
       <h2 class="text-white font-semibold text-lg">Analyse fehlgeschlagen</h2>
       <p id="error-message" class="text-red-400 text-sm"></p>
@@ -103,147 +148,149 @@
     </div>
 
     <!-- RESULT STATE -->
-    <div id="result-state" class="hidden space-y-5">
+    <div id="result-state" class="hidden space-y-4">
 
-      <!-- Preview + Main Verdict -->
-      <div class="glass-card p-6 flex gap-6 items-start">
-        <img id="image-preview" src="" alt="Vorschau" class="w-32 h-32 object-cover rounded-xl flex-shrink-0 ring-1 ring-white/10">
-        <div class="flex-1 space-y-4">
-          <div id="verdict-banner" class="verdict-banner verdict-info">
-            <span id="verdict-icon" class="text-2xl"></span>
-            <span id="verdict-label"></span>
-          </div>
-          <div>
-            <div class="flex justify-between text-xs text-slate-500 mb-2">
-              <span>Gesamt Echtheit-Score</span>
-              <span id="score-text" class="font-mono text-slate-300"></span>
+      <!-- ★ HERO: Sofortiges Ergebnis ★ -->
+      <div id="result-hero" class="glass p-6 verdict-hero-info border-2">
+        <div class="flex gap-5 items-center">
+          <!-- Bild-Vorschau -->
+          <img id="image-preview" src="" alt="Vorschau" class="w-28 h-28 object-cover rounded-2xl flex-shrink-0 ring-2 ring-white/10">
+          <!-- Hauptergebnis -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-baseline gap-3 mb-1">
+              <span id="hero-score" class="verdict-number verdict-number-info">–</span>
+              <div>
+                <div class="text-slate-400 text-xs font-medium uppercase tracking-widest">Echtheit</div>
+                <div id="hero-verdict" class="text-white font-bold text-xl leading-tight">Wird analysiert…</div>
+              </div>
             </div>
-            <div class="score-bar"><div id="score-fill" class="score-fill" style="width:0%"></div></div>
-            <div class="flex justify-between text-xs text-slate-700 mt-1"><span>Fake</span><span>Echt</span></div>
+            <div class="score-bar my-3">
+              <div id="hero-score-fill" class="score-fill score-info" style="width:0%"></div>
+            </div>
+            <p id="hero-summary" class="text-slate-400 text-sm leading-relaxed">Die Analyse läuft. Das Ergebnis erscheint hier in wenigen Sekunden.</p>
           </div>
-          <div class="flex gap-3 text-xs text-slate-500 flex-wrap">
-            <span>📄 <span id="meta-filename"></span></span>
-            <span>💾 <span id="meta-filesize"></span></span>
-            <span>🖼 <span id="meta-filetype"></span></span>
-          </div>
+        </div>
+        <!-- Phase-Status-Punkte -->
+        <div class="flex gap-3 mt-5 flex-wrap">
+          <div class="flex items-center gap-2"><div id="dot-p1" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-500">Metadaten</span></div>
+          <div class="text-slate-700">·</div>
+          <div class="flex items-center gap-2"><div id="dot-p2" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-500">Bildstruktur</span></div>
+          <div class="text-slate-700">·</div>
+          <div class="flex items-center gap-2"><div id="dot-p3" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-500">Frequenz&shy;muster</span></div>
+          <div class="text-slate-700">·</div>
+          <div class="flex items-center gap-2"><div id="dot-p4" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-500">KI-Modell</span></div>
+          <span id="meta-info" class="ml-auto text-xs text-slate-600"></span>
         </div>
       </div>
 
-      <!-- Phase 1: EXIF -->
-      <div class="glass-card p-6 space-y-4">
-        <div class="flex items-center gap-3">
-          <span class="phase-tag bg-cyan-500/20 text-cyan-400">Phase 1</span>
-          <h2 class="text-white font-semibold">Metadaten-Analyse</h2>
-        </div>
-        <div id="exif-matrix" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
-        <div id="flags-container" class="space-y-1"></div>
-      </div>
+      <!-- Analyse-Details (aufklappbar) -->
+      <div>
+        <p class="text-xs text-slate-600 uppercase tracking-widest font-semibold mb-3 px-1">Analyse-Details</p>
+        <div class="space-y-2">
 
-      <!-- Phase 2: ELA -->
-      <div class="glass-card p-6 space-y-4">
-        <div class="flex items-center gap-3">
-          <span class="phase-tag bg-violet-500/20 text-violet-400">Phase 2</span>
-          <h2 class="text-white font-semibold">ELA-Struktur-Scanner</h2>
-          <div id="phase2-loading" class="hidden ml-auto"><div class="spinner w-4 h-4"></div></div>
-        </div>
-        <div id="phase2-result" class="hidden space-y-4">
-          <div id="phase2-verdict-banner" class="verdict-banner verdict-info">
-            <span id="phase2-verdict-icon" class="text-xl"></span>
-            <span id="phase2-verdict-label"></span>
-          </div>
-          <div>
-            <div class="flex justify-between text-xs text-slate-500 mb-2">
-              <span>Echtheit-Score</span>
-              <span id="phase2-score-text" class="font-mono text-slate-300"></span>
+          <!-- Phase 1: Metadaten -->
+          <details class="phase-accordion" id="acc-phase1">
+            <summary>
+              <div id="dot-p1b" class="phase-dot phase-dot-loading"></div>
+              <span class="text-sm font-medium text-slate-300">Metadaten-Analyse</span>
+              <span id="p1-badge" class="badge badge-muted ml-2">läuft…</span>
+              <span class="chevron">▼</span>
+            </summary>
+            <div class="phase-accordion-body space-y-3">
+              <div id="exif-matrix" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+              <div id="flags-container" class="space-y-1"></div>
+              <p class="text-xs text-slate-600 mt-3">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Echte Kamerafotos enthalten technische Metadaten (EXIF). Fehlen diese komplett, wurde das Bild entweder über einen Messenger weitergeleitet oder digital erzeugt.</p>
             </div>
-            <div class="score-bar"><div id="phase2-score-fill" class="score-fill" style="width:0%"></div></div>
-          </div>
-          <div id="phase2-ela-block" class="hidden space-y-2">
-            <p class="text-xs text-slate-500 uppercase tracking-widest">ELA Heatmap</p>
-            <canvas id="ela-canvas-display" class="rounded-lg w-full max-h-48 object-contain"></canvas>
-            <div class="grid grid-cols-3 gap-2 text-xs">
-              <div class="exif-cell"><span class="exif-label">ELA Mittelwert</span><span id="ela-mean" class="exif-value"></span></div>
-              <div class="exif-cell"><span class="exif-label">Standardabw.</span><span id="ela-stddev" class="exif-value"></span></div>
-              <div class="exif-cell col-span-1"><span class="exif-label">Interpretation</span><span id="ela-interpretation" class="exif-value text-xs"></span></div>
-            </div>
-          </div>
-          <div class="grid grid-cols-3 gap-2 text-xs">
-            <div class="exif-cell"><span class="exif-label">Rauschen Ø</span><span id="noise-absmean" class="exif-value"></span></div>
-            <div class="exif-cell"><span class="exif-label">Rauschen σ</span><span id="noise-stddev" class="exif-value"></span></div>
-            <div class="exif-cell"><span class="exif-label">Rauschen</span><span id="noise-interpretation" class="exif-value text-xs"></span></div>
-            <div class="exif-cell"><span class="exif-label">Farbentropie</span><span id="color-entropy" class="exif-value"></span></div>
-            <div class="exif-cell col-span-2"><span class="exif-label">Farbe</span><span id="color-interpretation" class="exif-value text-xs"></span></div>
-          </div>
-        </div>
-      </div>
+          </details>
 
-      <!-- Phase 3: Frequenz -->
-      <div class="glass-card p-6 space-y-4">
-        <div class="flex items-center gap-3">
-          <span class="phase-tag bg-amber-500/20 text-amber-400">Phase 3</span>
-          <h2 class="text-white font-semibold">Frequenz- &amp; GAN-Analyse</h2>
-          <div id="phase3-loading" class="hidden ml-auto"><div class="spinner w-4 h-4"></div></div>
-        </div>
-        <div id="phase3-result" class="hidden space-y-4">
-          <div id="phase3-verdict-banner" class="verdict-banner verdict-info">
-            <span id="phase3-verdict-icon" class="text-xl"></span>
-            <span id="phase3-verdict-label"></span>
-          </div>
-          <div>
-            <div class="flex justify-between text-xs text-slate-500 mb-2">
-              <span>Echtheit-Score</span>
-              <span id="phase3-score-text" class="font-mono text-slate-300"></span>
+          <!-- Phase 2: ELA -->
+          <details class="phase-accordion" id="acc-phase2">
+            <summary>
+              <div id="dot-p2b" class="phase-dot phase-dot-loading"></div>
+              <span class="text-sm font-medium text-slate-300">Bildstruktur-Scanner (ELA)</span>
+              <span id="p2-badge" class="badge badge-muted ml-2">läuft…</span>
+              <span class="chevron">▼</span>
+            </summary>
+            <div class="phase-accordion-body space-y-3" id="phase2-result">
+              <div id="phase2-ela-block" class="hidden space-y-3">
+                <p class="text-xs text-slate-500 uppercase tracking-widest">ELA Heatmap</p>
+                <canvas id="ela-canvas-display" class="rounded-xl w-full max-h-52 object-contain bg-black/20"></canvas>
+                <div class="grid grid-cols-3 gap-2">
+                  <div class="exif-cell"><span class="exif-label">ELA Mittelwert</span><span id="ela-mean" class="exif-value"></span></div>
+                  <div class="exif-cell"><span class="exif-label">Standardabw.</span><span id="ela-stddev" class="exif-value"></span></div>
+                  <div class="exif-cell"><span class="exif-label">Deutung</span><span id="ela-interpretation" class="exif-value text-xs"></span></div>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div class="exif-cell"><span class="exif-label">Rauschen Ø</span><span id="noise-absmean" class="exif-value"></span></div>
+                <div class="exif-cell"><span class="exif-label">Rauschen σ</span><span id="noise-stddev" class="exif-value"></span></div>
+                <div class="exif-cell"><span class="exif-label">Rauschen</span><span id="noise-interpretation" class="exif-value text-xs"></span></div>
+                <div class="exif-cell"><span class="exif-label">Farbentropie</span><span id="color-entropy" class="exif-value"></span></div>
+                <div class="exif-cell col-span-2"><span class="exif-label">Farbe</span><span id="color-interpretation" class="exif-value text-xs"></span></div>
+              </div>
+              <p class="text-xs text-slate-600">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Die ELA-Analyse zeigt wo im Bild Bereiche unterschiedlich stark komprimiert wurden – ein typisches Zeichen nachträglicher Bildbearbeitung oder digitaler Montage.</p>
             </div>
-            <div class="score-bar"><div id="phase3-score-fill" class="score-fill" style="width:0%"></div></div>
-          </div>
-          <div id="phase3-signals" class="space-y-1"></div>
-        </div>
-      </div>
+          </details>
 
-      <!-- Phase 4: KI-Backend -->
-      <div class="glass-card p-6 space-y-4">
-        <div class="flex items-center gap-3">
-          <span class="phase-tag bg-emerald-500/20 text-emerald-400">Phase 4</span>
-          <h2 class="text-white font-semibold">KI-Modell (lokales Backend)</h2>
-          <div id="phase4-loading" class="hidden ml-auto"><div class="spinner w-4 h-4"></div></div>
-        </div>
-        <div id="phase4-result" class="hidden space-y-4">
-          <div id="phase4-verdict-banner" class="verdict-banner verdict-info">
-            <span id="phase4-verdict-icon" class="text-xl"></span>
-            <span id="phase4-verdict-label"></span>
-          </div>
-          <div>
-            <div class="flex justify-between text-xs text-slate-500 mb-2">
-              <span>Echtheit-Score (KI)</span>
-              <span id="phase4-score-text" class="font-mono text-slate-300"></span>
+          <!-- Phase 3: Frequenz -->
+          <details class="phase-accordion" id="acc-phase3">
+            <summary>
+              <div id="dot-p3b" class="phase-dot phase-dot-loading"></div>
+              <span class="text-sm font-medium text-slate-300">Frequenz- & GAN-Analyse</span>
+              <span id="p3-badge" class="badge badge-muted ml-2">läuft…</span>
+              <span class="chevron">▼</span>
+            </summary>
+            <div class="phase-accordion-body space-y-2" id="phase3-signals">
+              <p class="text-xs text-slate-600 mt-3">💡 <strong class="text-slate-500">Was bedeutet das?</strong> KI-generierte Bilder hinterlassen unsichtbare Muster in der Bildstruktur: künstlich gleichmäßige Texturen, untypische Farbverteilungen oder periodische Frequenzartefakte.</p>
             </div>
-            <div class="score-bar"><div id="phase4-score-fill" class="score-fill" style="width:0%"></div></div>
-            <div class="flex justify-between text-xs text-slate-700 mt-1"><span>KI generiert</span><span>Echt</span></div>
-          </div>
-          <p id="phase4-method" class="text-xs text-slate-600"></p>
-        </div>
-        <div id="phase4-offline" class="hidden">
-          <p class="text-slate-600 text-sm">⚠️ KI-Backend nicht erreichbar – nur lokale Analyse verfügbar.</p>
+          </details>
+
+          <!-- Phase 4: KI-Modell -->
+          <details class="phase-accordion" id="acc-phase4" open>
+            <summary>
+              <div id="dot-p4b" class="phase-dot phase-dot-loading"></div>
+              <span class="text-sm font-medium text-slate-300">KI-Modell (Serveranalyse)</span>
+              <span id="p4-badge" class="badge badge-muted ml-2">läuft…</span>
+              <span class="chevron">▼</span>
+            </summary>
+            <div class="phase-accordion-body space-y-3">
+              <div id="phase4-result" class="hidden space-y-3">
+                <div class="score-bar">
+                  <div id="phase4-score-fill" class="score-fill" style="width:0%"></div>
+                </div>
+                <div class="flex justify-between text-xs text-slate-500">
+                  <span>⬅ KI generiert</span>
+                  <span id="phase4-score-text" class="font-mono text-slate-300"></span>
+                  <span>Echtes Foto ➡</span>
+                </div>
+                <p id="phase4-method" class="text-xs text-slate-600"></p>
+              </div>
+              <div id="phase4-offline" class="hidden">
+                <p class="text-slate-600 text-sm">⚠️ KI-Backend nicht erreichbar – Serveranalyse nicht verfügbar.</p>
+              </div>
+              <p class="text-xs text-slate-600">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Ein trainiertes KI-Modell (SwinV2, Microsoft) läuft auf einem lokalen Server mit dedizierter GPU und prüft das Bild auf Muster, die für KI-generierte Bilder typisch sind. Es wurde auf hunderttausenden echten und KI-generierten Fotos trainiert.</p>
+            </div>
+          </details>
+
         </div>
       </div>
 
       <!-- Aktionen -->
-      <div class="flex justify-center gap-4">
-        <button id="check-another-btn" class="px-8 py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-semibold text-sm transition-all hover:shadow-lg hover:shadow-cyan-500/25 active:scale-95">
+      <div class="flex justify-center pt-2">
+        <button id="check-another-btn" class="px-8 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold text-sm transition-all hover:shadow-lg hover:shadow-cyan-500/20 active:scale-95">
           ← Weiteres Bild prüfen
         </button>
       </div>
-      <div class="text-center">
-        <span class="privacy-badge">🔒 Das Bild verlässt nie dein Gerät – Analyse im Browser.</span>
-      </div>
-    </div>
+
+    </div><!-- /result-state -->
 
   </main>
 
-  <footer class="border-t border-white/5 py-6 text-center text-xs text-slate-600 mt-10">
+  <footer class="border-t border-white/5 py-6 text-center text-xs text-slate-700 mt-6">
     <a href="https://echt-check.de" class="hover:text-cyan-400 transition-colors">echt-check.de</a> ·
     Zero-Trace · Keine Cookies · Keine Tracker
   </footer>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"></script>
