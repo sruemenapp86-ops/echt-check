@@ -1,11 +1,11 @@
 ﻿const EchtCheckAPI = (() => {
-  const BASE = 'http://api.echt-check.de:3500';
+  const BASE = 'https://api.echt-check.de:3500';
   let available = null;
 
   async function ping() {
     if (available !== null) return available;
     try {
-      const r = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(4000) });
+      const r = await fetch(`${BASE}/health`, { signal: AbortSignal.timeout(5000) });
       available = r.ok;
     } catch { available = false; }
     return available;
