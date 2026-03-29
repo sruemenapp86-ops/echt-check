@@ -354,7 +354,7 @@ const EchtCheckUI = (() => {
   }
 
   function _showInitialResult(result, file) {
-    document.getElementById('loading-state').classList.remove('hidden');
+    document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('result-state').classList.remove('hidden');
 
     if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
