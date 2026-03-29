@@ -470,7 +470,7 @@ const EchtCheckUI = (() => {
       }
 
       if (_statusInterval) clearInterval(_statusInterval);
-      _finalizeHero();
+      _finalizeHero(imgData, txtData);
 
     } catch(err) { 
       if (_statusInterval) clearInterval(_statusInterval);
@@ -478,7 +478,7 @@ const EchtCheckUI = (() => {
     }
   }
 
-  function _finalizeHero() {
+  function _finalizeHero(imgData, txtData) {
     _analysisComplete = true;
     const scores = Object.values(phaseScores).filter(v => v !== null);
     if (!scores.length) return;
@@ -496,11 +496,25 @@ const EchtCheckUI = (() => {
 
     const level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
     let vt = VERDICT_TEXT[level];
-    let summaryTxt = SUMMARY_TEXT[level];
     
+    // ─── NEU: Wir ignorieren die Zahlen und generischen Texte. 
+    // Der Experte (GPT-4o) spricht Klartext!
+    let expertExplanation = "";
+    if (imgData && imgData.explanation) {
+      expertExplanation += `📸 Bild-Analyse: ${imgData.explanation} `;
+    }
+    if (txtData && txtData.summary) {
+      expertExplanation += `<br>💬 Text-Befund: ${txtData.summary}`;
+    }
+
+    // Fallback falls KI offline war
+    if (!expertExplanation) {
+      expertExplanation = SUMMARY_TEXT[level];
+    }
+
     if (vetoTriggered) {
-      vt = { ...vt, label: 'Manipulation/Desinformation erkannt' };
-      summaryTxt = 'Die KI-Tiefenanalyse und Forensik hat sehr starke Hinweise auf Bildbearbeitung, Manipulation von Kontext oder hetzerische/problematische Inhalte gefunden.';
+      vt = { ...vt, label: 'Manipulation / Desinformation erkannt' };
+      if (!imgData && !txtData) expertExplanation = 'Die KI-Tiefenanalyse und Forensik hat sehr starke Hinweise auf Bildbearbeitung oder problematische Inhalte gefunden.';
     }
 
     const hero = document.getElementById('result-hero');
@@ -515,17 +529,16 @@ const EchtCheckUI = (() => {
     imgResult.src = imgOrig.src;
     imgResult.alt = imgOrig.alt;
 
-    const numEl = document.getElementById('hero-score');
-    numEl.textContent = avg;
-    numEl.className = `verdict-number ${vt.num}`;
-
+    // Nur noch Klartext anzeigen (Zahlen & Balken sind gelöscht)
     document.getElementById('hero-verdict').textContent = vt.label;
-    document.getElementById('hero-summary').textContent = summaryTxt;
-
-    const fill = document.getElementById('hero-score-fill');
-    fill.className = `score-fill score-${level}`;
-    fill.style.width = '0%';
-    setTimeout(() => { fill.style.width = avg + '%'; }, 60);
+    
+    // Wir setzen das innerHTML, damit der <br> Tag beim Kombinieren greift
+    const summaryEl = document.getElementById('hero-summary');
+    summaryEl.innerHTML = expertExplanation;
+    
+    // Je nach Level passen wir die Rahmenfarbe der Erklärung an
+    summaryEl.className = `text-sm md:text-base leading-relaxed border-l-4 pl-4 py-1 ` + 
+      (level === 'danger' ? 'border-red-500 text-red-100' : level === 'warning' ? 'border-amber-500 text-amber-100' : 'border-emerald-500 text-emerald-100');
 
     [['dot-p1','dot-p1b'],['dot-p2','dot-p2b'],['dot-p3','dot-p3b'],
      ['dot-p4','dot-p4b'],['dot-p5','dot-p5b']].forEach(([src, dst]) => {
