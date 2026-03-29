@@ -418,15 +418,15 @@ Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
       const prompt = `Untersuche dieses Bild äußerst objektiv. 
 ${contextInstruction}
 
-Suche zielgerichtet nach diesen Kriterien:
-1. Semantische Plausibilität (WICHTIG): Zeigt das Bild bekannte Personen/Politiker (z.B. Merkel, Obama, Trump, Scholz) in absurden, bizarren oder extrem unwahrscheinlichen Situationen (z.B. rennend am Strand, lachend beim Biertrinken, in Gefängniskleidung)? Wenn ja, ist das ein EINDEUTIGER DEEPFAKE!
-2. Fotomontage: Zusammengefügte Personen, schwebende Objekte, fehlende Körperteile.
-3. Typische KI-Artefakte: Verschmolzene Finger, unsinnige Objekte, ineinanderlaufende Texturen.
+Suche zielgerichtet nach DIESEN DREI VERDÄCHTIGEN MERKMALEN:
+1. Prominente in absurden Situationen: Sind in dem Bild eindeutig hochrangige Politiker (wie Angela Merkel, Barack Obama, Wladimir Putin, Olaf Scholz) in absolut lächerlichen, unwahrscheinlichen oder peinlichen Szenen zu sehen (z.B. am Strand herumrennend, saufend)? Wenn ja -> EINDEUTIGER DEEPFAKE!
+2. Logikfehler und Fotomontage: Fliegende Objekte, physikalisch unmögliche Beleuchtung, falsche Proportionen.
+3. Typische KI-Artefakte: Verschmolzene Finger an Händen, ineinanderlaufende Gesichter im Hintergrund, unleserlicher Schrifttest.
 
 Antworte NUR mit gültigem JSON ohne Markdown oder Codeblöcke:
-{"manipulated":true/false,"confidence":0-100,"verdict":"Authentisch oder Manipuliert","flags":[],"explanation":""}
+{"manipulated":true/false,"confidence":0-100,"verdict":"Authentisch oder Manipuliert","flags":["Name des gefundenen Fehlers 1"],"explanation":"1 Satz exakte Begründung, was im Bild zu sehen ist und warum das logisch falsch oder richtig ist."}
 WICHTIG:
-- Setze "manipulated": false und "flags": [], wenn das Bild völlig normal aussieht. Erfinde keine Fehler.
+- Setze "manipulated": false und "flags": [], wenn das Bild wie ein ganz normales, unauffälliges Bild aussieht. 
 - Das Array 'flags' darf nur gefüllt werden, wenn 'manipulated' true ist.
 - 'explanation' soll in 1 Satz begründen, warum du es für einwandfrei oder manipuliert hältst.`;
 
