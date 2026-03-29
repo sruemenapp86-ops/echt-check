@@ -383,6 +383,7 @@ const EchtCheckUI = (() => {
       // Phase 6: LLM-Tiefenanalyse
       _setDot(['dot-p6b'], 'loading');
       _setBadge('p6-badge', 'info', 'läuft…');
+      let imgData = null, txtData = null;
       try {
         const llmStatus = await EchtCheckAPI.checkLLMStatus();
         if (!llmStatus.online) {
@@ -431,8 +432,8 @@ const EchtCheckUI = (() => {
               : Promise.resolve(null)
           ]);
 
-          const imgData = imgRes.status === 'fulfilled' ? imgRes.value : null;
-          const txtData = txtRes.status === 'fulfilled' ? txtRes.value : null;
+          imgData = imgRes.status === 'fulfilled' ? imgRes.value : null;
+          txtData = txtRes.status === 'fulfilled' ? txtRes.value : null;
 
           _showPhase6Results(imgData, txtData);
 
