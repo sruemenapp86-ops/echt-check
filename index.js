@@ -215,6 +215,36 @@ app.get('/llm/status', async (req, res) => {
   } catch(e) { res.json({ online: false, error: e.message }); }
 });
 
+// ─── Heimsucher-Modul (DuckDuckGo Scraper für Faktencheck-Seiten) ───
+async function searchFactChecks(query) {
+  if (!query || query.length < 5) return [];
+  const searchStr = `site:mimikama.org OR site:correctiv.org OR site:dpa-factchecking.com ${query}`;
+  const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchStr)}`;
+  
+  try {
+    const r = await axios.get(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36 EchtCheck' }, timeout: 8000 });
+    const html = r.data;
+    const results = [];
+    const regex = /<a class="result__url" href="([^"]+)">(.*?)<\/a>.*?<a class="result__snippet[^>]+>(.*?)<\/a>/gs;
+    let m;
+    while ((m = regex.exec(html)) && results.length < 2) { // max 2 Treffer reichen völlig
+      let href = m[1];
+      if (href.startsWith('//duckduckgo.com/l/?uddg=')) {
+        href = decodeURIComponent(href.split('uddg=')[1].split('&')[0]);
+      }
+      const title = m[2].replace(/<[^>]+>/g,'').trim();
+      const snippet = m[3].replace(/<[^>]+>/g,'').trim();
+      if (title && href && !href.includes('duckduckgo.com')) {
+         results.push({ url: href, title, snippet });
+      }
+    }
+    return results;
+  } catch(e) {
+    console.error('FactCheck API error:', e.message);
+    return [];
+  }
+}
+
 app.post('/analyze/llm', async (req, res) => {
   const { type, text, imageBase64, mimeType } = req.body || {};
   if (!type || !['text','image'].includes(type)) return res.status(400).json({ error: 'type muss "text" oder "image" sein' });
@@ -238,7 +268,7 @@ Prüfe auf:
 Text: """${text.slice(0, 3000)}"""
 
 Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
-{"suspicious":true/false,"score":0-100,"verdict":"Unauffällig oder Textmuster auffällig oder Manipulation erkannt oder Hetze erkannt","flags":[{"type":"hate/fake/manipulation/disinfo","text":"kurze Erklärung auf Deutsch","severity":"low/medium/high"}],"summary":"1-2 Sätze Zusammenfassung auf Deutsch"}`;
+{"suspicious":true/false,"score":0-100,"verdict":"Unauffällig oder Textmuster auffällig oder Manipulation erkannt oder Hetze erkannt","flags":[{"type":"hate/fake/manipulation/disinfo","text":"kurze Erklärung auf Deutsch","severity":"low/medium/high"}],"summary":"1-2 Sätze Zusammenfassung auf Deutsch","searchQuery":"3-5 markante Suchbegriffe aus dem Text (ohne Füllwörter) für einen Google Fact-Check"}`;
 
       const r = await axios.post(`${OLLAMA_BASE}/api/generate`, {
         model: LLM_TEXT_MODEL, prompt, stream: false, format: 'json',
@@ -248,6 +278,11 @@ Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
       let parsed;
       try { parsed = typeof r.data.response === 'string' ? JSON.parse(r.data.response) : r.data.response; }
       catch { return res.status(500).json({ error: 'LLM hat kein valides JSON geliefert', raw: r.data.response?.slice(0,200) }); }
+
+      // ─── NEU: Vollautomatischer Web Fact-Check Abgleich ───
+      if (parsed.searchQuery) {
+        parsed.factchecks = await searchFactChecks(parsed.searchQuery);
+      }
 
       res.json({ type: 'text', model: LLM_TEXT_MODEL, ...parsed });
 
