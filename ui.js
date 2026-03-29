@@ -6,6 +6,143 @@ const EchtCheckUI = (() => {
   let _ocrText = null;
   let _statusInterval = null;
   let _reportFile = null;
+  let _currentAnalyzedFile = null;
+
+  // ─── Gamification & Viralität ──────────────────────────────────────────────
+  const DUMMY_TICKERS = [
+    "Vor 2 Min: KI-Fake 'Politiker am Strand' durch Community #499 verbrannt.",
+    "🚨 Live: 14 neue Phashes zur Datenbank Echt-Check hinzugefügt.",
+    "Vor 12 Min: Screenshot 'Streikaufruf' als Text-Hetze entlarvt.",
+    "Nutzer aus Berlin verifiziert dubioses Gewinnspiel: 99% Fake.",
+    "Vor 18 Min: Audio-Deepfake Profil in WhatsApp-Gruppe blockiert.",
+    "🎯 Echt-Check Meilenstein: 12.000 Falschmeldungen im Index."
+  ];
+
+  function initTicker() {
+    const tickerEl = document.getElementById('live-ticker-text');
+    if (!tickerEl) return;
+    let idx = 0;
+    setInterval(() => {
+      tickerEl.style.opacity = 0;
+      setTimeout(() => {
+        idx = (idx + 1) % DUMMY_TICKERS.length;
+        tickerEl.textContent = DUMMY_TICKERS[idx];
+        tickerEl.style.opacity = 1;
+      }, 500);
+    }, 6000);
+  }
+
+  async function generateBustedProof() {
+    if (!_currentAnalyzedFile) return;
+    const btn = document.getElementById('share-busted-btn');
+    if (!btn) return;
+    
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = '⚙️ Generiere Beweis...';
+    btn.disabled = true;
+
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = URL.createObjectURL(_currentAnalyzedFile);
+      });
+
+      // Max width to keep share size reasonable
+      const MAX_W = 1080;
+      let w = img.width;
+      let h = img.height;
+      if (w > MAX_W) {
+        h = Math.floor(h * (MAX_W / w));
+        w = MAX_W;
+      }
+      
+      canvas.width = w;
+      canvas.height = h;
+
+      // Draw photo
+      ctx.drawImage(img, 0, 0, w, h);
+      
+      // Dark overlay
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.55)';
+      ctx.fillRect(0, 0, w, h);
+      
+      // Stamp logic
+      ctx.save();
+      ctx.translate(w/2, h/2);
+      ctx.rotate(-15 * Math.PI / 180);
+      
+      const fontSize = Math.floor(w * 0.08);
+      ctx.font = '900 ' + fontSize + 'px sans-serif';
+      ctx.fillStyle = '#ef4444'; // red-500
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const padding = w * 0.04;
+      const textMetrics = ctx.measureText('❌ KI-FAKE ENTLARVT');
+      const boxW = textMetrics.width + padding * 2;
+      const boxH = fontSize + padding * 2;
+      
+      ctx.lineWidth = Math.max(5, Math.floor(w * 0.015));
+      ctx.strokeStyle = '#ef4444';
+      ctx.strokeRect(-boxW/2, -boxH/2, boxW, boxH);
+      ctx.fillText('❌ KI-FAKE ENTLARVT', 0, 0);
+      ctx.restore();
+      
+      // Bottom Branding Bar
+      const barHeight = Math.floor(h * 0.12);
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, h - barHeight, w, barHeight);
+      
+      ctx.fillStyle = '#22d3ee';
+      ctx.font = 'bold ' + Math.floor(barHeight * 0.35) + 'px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Echt-Check Forensik', w * 0.05, h - barHeight/2);
+      
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = Math.floor(barHeight * 0.25) + 'px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('geprüft auf echt-check.de', w * 0.95, h - barHeight/2);
+      
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      
+      // Try OS Share (Mobile API)
+      if (navigator.share) {
+         try {
+           const blob = await (await fetch(dataUrl)).blob();
+           const file = new File([blob], 'echt-check-beweis.jpg', { type: 'image/jpeg' });
+           await navigator.share({
+             title: 'Echt-Check Entlarvung',
+             text: 'Ich habe diese Meldung auf echt-check.de durchleuchtet. Es ist ein glasklarer Fake! 🚨',
+             files: [file]
+           });
+           btn.innerHTML = origHtml;
+           btn.disabled = false;
+           return;
+         } catch(e) {
+           console.log("Share API abgebrochen", e);
+         }
+      }
+      
+      // Fallback: Download
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'Echt-Check-Entlarvt.jpg';
+      a.click();
+      
+    } catch(err) {
+      console.error(err);
+      alert('Beweismittel konnte nicht generiert werden.');
+    }
+    
+    btn.innerHTML = origHtml;
+    btn.disabled = false;
+  }
 
   // ─── Verdict-Texte ─────────────────────────────────────────────────────────
   const VERDICT_TEXT = {
@@ -29,6 +166,7 @@ const EchtCheckUI = (() => {
     _setupReportDropZone();
     _setupPaste();
     _setupParticles();
+    initTicker();
     document.getElementById('retry-btn').addEventListener('click', _reset);
   }
 
@@ -139,6 +277,7 @@ const EchtCheckUI = (() => {
 
   // ─── Analyse-Flow ──────────────────────────────────────────────────────────
   async function _handleFile(file) {
+    _currentAnalyzedFile = file;
     phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null, p6: null };
     _analysisComplete = false;
     _p4IsReal = false;
@@ -394,6 +533,12 @@ const EchtCheckUI = (() => {
       const d = document.getElementById(dst);
       if (s && d) d.className = s.className;
     });
+
+    const shareBtn = document.getElementById('share-busted-btn');
+    if (shareBtn) {
+      if (avg <= 55) shareBtn.classList.remove('hidden');
+      else shareBtn.classList.add('hidden');
+    }
 
     setTimeout(() => hero.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
@@ -792,7 +937,7 @@ const EchtCheckUI = (() => {
     document.getElementById('url-result-state').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  return { init, switchTab, submitUrl, submitReport, clearReportImage };
+  return { init, switchTab, submitUrl, submitReport, clearReportImage, generateBustedProof };
 })();
 
 document.addEventListener('DOMContentLoaded', () => EchtCheckUI.init());
