@@ -92,18 +92,45 @@ const EchtCheckAPI = (() => {
 
   async function analyzeLLMImage(file) {
     try {
-      // Datei → Base64
-      const base64 = await new Promise((res, rej) => {
+      // Bild Client-seitig verkleinern um 413 Payload Too Large zu verhindern
+      const base64 = await new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = () => res(reader.result.split(',')[1]); // nur Base64-Teil
-        reader.onerror = rej;
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const MAX_SIZE = 1024;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height && width > MAX_SIZE) {
+              height *= MAX_SIZE / width;
+              width = MAX_SIZE;
+            } else if (height > MAX_SIZE) {
+              width *= MAX_SIZE / height;
+              height = MAX_SIZE;
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            // Als JPEG exportieren (reduziert Größe massiv)
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            resolve(dataUrl.split(',')[1]); // Nur Base64 Teil
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
         reader.readAsDataURL(file);
       });
 
       const r = await fetch(`${BASE}/analyze/llm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'image', imageBase64: base64, mimeType: file.type }),
+        body: JSON.stringify({ type: 'image', imageBase64: base64, mimeType: 'image/jpeg' }),
         signal: AbortSignal.timeout(100000)
       });
       const data = await r.json();

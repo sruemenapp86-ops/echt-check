@@ -231,7 +231,9 @@ const EchtCheckUI = (() => {
       && _p4IsReal;
     if (p4ShouldDouble) weighted.push(phaseScores.p4);
     if (phaseScores.p6 !== null) weighted.push(phaseScores.p6); // p6 extra Gewicht
+    if (!weighted.length) return; // NaN-Guard
     const avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
+    if (isNaN(avg)) return; // NaN-Guard
     const level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
     const vt = VERDICT_TEXT[level];
 
@@ -275,6 +277,51 @@ const EchtCheckUI = (() => {
 
     // Scroll zum Ergebnis
     setTimeout(() => hero.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }
+
+  // ─── Phase 6: LLM-Ergebnisse rendern ──────────────────────────────
+  function _showPhase6Results(imgData, txtData) {
+    const sevCls = { high:'badge-danger', medium:'badge-warning', low:'badge-info' };
+    const typLbl = { hate:'Hetze', fake:'Fake-News', manipulation:'Manipulation', disinfo:'Desinformation' };
+
+    if (imgData && !imgData.error) {
+      document.getElementById('llm-image-result').classList.remove('hidden');
+      const flagsEl = document.getElementById('llm-image-flags');
+      flagsEl.innerHTML = '';
+      if (imgData.manipulated) {
+        (imgData.flags || []).forEach(f => {
+          const txt = typeof f === 'string' ? f : (f.text || JSON.stringify(f));
+          flagsEl.innerHTML += `<div class="glass p-2 rounded-lg border border-red-700/30 text-xs text-red-300">🔍 ${txt}</div>`;
+        });
+        if (!(imgData.flags || []).length) {
+          flagsEl.innerHTML = `<div class="glass p-2 rounded-lg border border-amber-700/30 text-xs text-amber-400">⚠️ ${imgData.verdict || 'Auffälligkeiten erkannt'}</div>`;
+        }
+      } else {
+        flagsEl.innerHTML = `<div class="glass p-2 rounded-lg border border-emerald-700/30 text-xs text-emerald-400">✅ Keine Manipulationsmerkmale erkannt</div>`;
+      }
+      document.getElementById('llm-image-explanation').textContent = imgData.explanation || imgData.verdict || '';
+    }
+
+    if (txtData && !txtData.error) {
+      document.getElementById('llm-text-result').classList.remove('hidden');
+      const flagsEl = document.getElementById('llm-text-flags');
+      flagsEl.innerHTML = '';
+      if (txtData.suspicious && (txtData.flags || []).length) {
+        txtData.flags.forEach(f => {
+          const sev = f.severity || 'low';
+          const lbl = typLbl[f.type] || f.type || 'Hinweis';
+          flagsEl.innerHTML += `<div class="glass p-2 rounded-lg border border-red-700/30">
+            <span class="badge ${sevCls[sev] || 'badge-info'} text-xs">${lbl}</span>
+            <span class="text-xs text-slate-400 ml-2">${f.text || ''}</span>
+          </div>`;
+        });
+      } else {
+        flagsEl.innerHTML = `<div class="glass p-2 rounded-lg border border-emerald-700/30 text-xs text-emerald-400">✅ Keine problematischen Inhalte erkannt</div>`;
+      }
+      document.getElementById('llm-text-summary').textContent = txtData.summary || '';
+    } else if (imgData && !txtData) {
+      document.getElementById('llm-no-text').classList.remove('hidden');
+    }
   }
 
   // ─── States ────────────────────────────────────────────────────────────────
