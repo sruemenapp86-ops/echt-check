@@ -117,13 +117,16 @@
 <div class="relative z-10 min-h-screen">
 
   <!-- Header -->
-  <header class="border-b border-white/5 py-4 px-6">
+  <header class="border-b border-white/5 py-4 px-6 bg-[#0a0f1a]/80 backdrop-blur-md sticky top-0 z-50">
     <div class="max-w-3xl mx-auto flex items-center justify-between">
-      <div class="flex items-center">
-        <!-- Das echte Logo (vertikal) einbinden -->
-        <img src="logo.jpg" alt="Echt-Check Logo" class="h-14 w-auto object-contain drop-shadow-md rounded-lg">
+      <div class="flex items-center gap-3.5 group cursor-pointer" onclick="window.location.reload()">
+        <img src="logo.jpg" alt="Echt-Check Logo" class="h-12 w-12 object-cover rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.15)] ring-1 ring-white/10 transition-transform group-hover:scale-105">
+        <div class="flex flex-col justify-center">
+          <h1 class="text-2xl font-bold tracking-tight leading-none"><span class="text-cyan-400">Echt</span><span class="text-white">-Check</span></h1>
+          <span class="text-slate-400 text-[11px] font-semibold tracking-widest uppercase mt-1.5 opacity-80">Forensik v3.0</span>
+        </div>
       </div>
-      <span class="badge badge-info hidden sm:inline-flex">🔐 Serveranalyse – keine Datenweitergabe</span>
+      <span class="badge badge-info hidden sm:inline-flex bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/20">🔐 Lokale Serveranalyse</span>
     </div>
   </header>
 
