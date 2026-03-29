@@ -147,8 +147,7 @@ const EchtCheckUI = (() => {
         _setDot(['dot-p4'], 'warning');
         _setBadge('p4-badge', 'warning', 'Offline');
       }
-      // Alle Vorphasen fertig
-      _finalizeHero();
+      // Alle Vorphasen fertig, aber wir zeigen das Banner erst nach P6 an.
 
       // Phase 6: LLM-Tiefenanalyse (läuft nach Finale, aktualisiert danach nochmal)
       _setDot(['dot-p6b'], 'loading');
@@ -202,14 +201,15 @@ const EchtCheckUI = (() => {
             p6lvl === 'safe' ? 'Keine Auffälligkeiten'
             : p6lvl === 'danger' ? 'Probleme erkannt' : 'Leichte Auffälligkeiten');
 
-          // Hero-Score nachträglich mit p6 aktualisieren
-          _finalizeHero();
         }
       } catch(e) {
         console.warn('Phase6 LLM:', e.message);
         _setDot(['dot-p6b'], 'info');
         _setBadge('p6-badge', 'info', 'Fehler');
       }
+
+      // Hero-Score GANZ am Ende aktualisieren, damit es nicht während der LLM-Runde springt
+      _finalizeHero();
 
     } catch(err) { _showError(err.message); }
   }
