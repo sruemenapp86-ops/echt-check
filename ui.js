@@ -3,7 +3,8 @@ const EchtCheckUI = (() => {
   let phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null, p6: null };
   let _analysisComplete = false;
   let _p4IsReal = false;
-  let _ocrText = null; // OCR-Text für LLM-Weitergabe
+  let _ocrText = null;
+  let _statusInterval = null;
 
   // ─── Verdict-Texte ─────────────────────────────────────────────────────────
   const VERDICT_TEXT = {
@@ -27,6 +28,12 @@ const EchtCheckUI = (() => {
     _setupPaste();
     _setupParticles();
     document.getElementById('retry-btn').addEventListener('click', _reset);
+  }
+
+  // ─── Status Text Helper ────────────────────────────────────────────────────
+  function _setHeroStatus(text) {
+    const el = document.getElementById('hero-analyzing-subtitle');
+    if (el) el.textContent = '> ' + text;
   }
 
   // ─── Input-Handler ─────────────────────────────────────────────────────────
@@ -56,10 +63,11 @@ const EchtCheckUI = (() => {
 
   // ─── Analyse-Flow ──────────────────────────────────────────────────────────
   async function _handleFile(file) {
-    phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
+    phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null, p6: null };
     _analysisComplete = false;
     _p4IsReal = false;
     _showLoading(file);
+    _setHeroStatus('Initialisiere Analyse...');
 
     try {
       // Phase 1 (synchron, schnell)
@@ -68,9 +76,9 @@ const EchtCheckUI = (() => {
       phaseScores.p1 = result.score;
       _setDot(['dot-p1'], result.verdict.level);
       _setBadge('p1-badge', result.verdict.level, result.verdict.label);
-      _updateHero();
 
       // Phase 2
+      _setHeroStatus('Prüfe Bildrauschen und ELA...');
       _setDot(['dot-p2'], 'loading');
       try {
         const s = await EchtCheckScanner.scan(file);
@@ -83,9 +91,9 @@ const EchtCheckUI = (() => {
         _setDot(['dot-p2'], 'warning');
         _setBadge('p2-badge', 'warning', 'Fehler');
       }
-      _updateHero();
 
       // Phase 3
+      _setHeroStatus('Analysiere KI-Frequenzmuster...');
       _setDot(['dot-p3'], 'loading');
       try {
         const a = await EchtCheckAIDetector.detect(file);
@@ -98,9 +106,9 @@ const EchtCheckUI = (() => {
         _setDot(['dot-p3'], 'warning');
         _setBadge('p3-badge', 'warning', 'Fehler');
       }
-      _updateHero();
 
       // Phase 5: OCR Textanalyse
+      _setHeroStatus('Führe optische Zeichenerkennung (OCR) aus...');
       _setDot(['dot-p5'], 'loading');
       document.getElementById('ocr-loading').classList.remove('hidden');
       if (EchtCheckOCR.looksLikeScreenshot(file.type, !!result.exif?.make)) {
@@ -112,7 +120,7 @@ const EchtCheckUI = (() => {
         });
         document.getElementById('ocr-loading').classList.add('hidden');
         _showPhase5Results(ocr);
-        _ocrText = ocr.valid ? ocr.text : null; // für LLM merken
+        _ocrText = ocr.valid ? ocr.text : null;
         phaseScores.p5 = ocr.valid ? ocr.score : null;
         const lvl5 = !ocr.valid ? 'info' : ocr.level;
         _setDot(['dot-p5'], lvl5);
@@ -124,9 +132,9 @@ const EchtCheckUI = (() => {
         _setDot(['dot-p5'], 'info');
         _setBadge('p5-badge', 'info', e.message.includes('Timeout') ? 'Timeout' : 'Fehler');
       }
-      _updateHero();
 
-      // Phase 4 (Backend KI) – LETZTE PHASE
+      // Phase 4 (Backend KI)
+      _setHeroStatus('Server scannt auf generative KI-Schattenstrukturen...');
       _setDot(['dot-p4'], 'loading');
       try {
         const r = await EchtCheckAPI.analyzeImage(file);
@@ -144,9 +152,8 @@ const EchtCheckUI = (() => {
         document.getElementById('phase4-offline').classList.remove('hidden');
         _setDot(['dot-p4'], 'warning');
       }
-      // Alle Vorphasen fertig, aber wir zeigen das Banner erst nach P6 an.
 
-      // Phase 6: LLM-Tiefenanalyse (läuft nach Finale, aktualisiert danach nochmal)
+      // Phase 6: LLM-Tiefenanalyse
       _setDot(['dot-p6b'], 'loading');
       _setBadge('p6-badge', 'info', 'läuft…');
       try {
@@ -160,7 +167,21 @@ const EchtCheckUI = (() => {
           _setDot(['dot-p6b'], 'warning');
           _setBadge('p6-badge', 'warning', 'Modell fehlt');
         } else {
-          // Beide LLM-Anfragen parallel starten
+          const aiSteps = [
+             "Deep-Learning Forensik rechnet auf lokaler GPU...",
+             "Suche nach harten Kanten und Fotomontagen...",
+             "Überprüfe Schattenfall und Beleuchtung auf Unstimmigkeiten...",
+             "Vergleiche Bildsemantik mit bekannten Fake-Mustern...",
+             "Analysiere erkannte Texte auf Desinformation und Hetze...",
+             "Lokale LLMs konsolidieren die Metadaten..."
+          ];
+          let aiStepIdx = 0;
+          _setHeroStatus(aiSteps[0]);
+          _statusInterval = setInterval(() => {
+             aiStepIdx = (aiStepIdx + 1) % aiSteps.length;
+             _setHeroStatus(aiSteps[aiStepIdx]);
+          }, 4500);
+
           const [imgRes, txtRes] = await Promise.allSettled([
             llmStatus.visionReady ? EchtCheckAPI.analyzeLLMImage(file) : Promise.resolve(null),
             (llmStatus.textReady && _ocrText && _ocrText.length >= 20)
@@ -173,7 +194,6 @@ const EchtCheckUI = (() => {
 
           _showPhase6Results(imgData, txtData);
 
-          // Score berechnen (niedrigster Score gewinnt - Vorsichtsprinzip)
           let p6scores = [];
           if (imgData) {
             const imgScore = imgData.manipulated ? Math.min(imgData.confidence ?? 50, 40)
@@ -181,20 +201,17 @@ const EchtCheckUI = (() => {
             p6scores.push(imgScore);
           }
           if (txtData) {
-            // Text-LLM gibt oft einen 'Suspicion Score' (100 = Hetze/Fake). Wir brauchen einen Authentizitäts-Score (100 = Gut).
             let txtScore = 100 - (txtData.score ?? 50);
             if (txtData.suspicious) txtScore = Math.min(txtScore, 40);
             p6scores.push(txtScore);
           }
           if (p6scores.length) {
-            // Konservativste Metrik verwenden (niedrigster Wert entscheidet über Phase 6)
             phaseScores.p6 = Math.min(...p6scores);
           }
 
           const p6lvl = (phaseScores.p6 ?? 50) >= 65 ? 'safe'
                       : (phaseScores.p6 ?? 50) >= 40 ? 'warning' : 'danger';
           
-          // Kombiniertes Master-Level (Worst-Case aus SwinV2 und Ollama)
           const p4lvl = (phaseScores.p4 ?? 50) >= 65 ? 'safe' : (phaseScores.p4 ?? 50) >= 40 ? 'warning' : 'danger';
           const masterLvl = (p6lvl === 'danger' || p4lvl === 'danger') ? 'danger'
                           : (p6lvl === 'warning' || p4lvl === 'warning') ? 'warning' : 'safe';
@@ -203,7 +220,6 @@ const EchtCheckUI = (() => {
           _setBadge('p6-badge', masterLvl,
             masterLvl === 'safe' ? 'Keine Auffälligkeiten'
             : masterLvl === 'danger' ? 'Probleme erkannt' : 'Leichte Auffälligkeiten');
-
         }
       } catch(e) {
         console.warn('Phase6 LLM:', e.message);
@@ -211,41 +227,28 @@ const EchtCheckUI = (() => {
         _setBadge('p6-badge', 'info', 'Fehler');
       }
 
-      // Hero-Score GANZ am Ende aktualisieren, damit es nicht während der LLM-Runde springt
+      if (_statusInterval) clearInterval(_statusInterval);
       _finalizeHero();
 
-    } catch(err) { _showError(err.message); }
+    } catch(err) { 
+      if (_statusInterval) clearInterval(_statusInterval);
+      _showError(err.message); 
+    }
   }
 
-  // ─── _updateHero: Dots im Analyse-Banner, KEIN Score-Update (nur intern) ──────────────
-  function _updateHero() {
-    // Nichts weiter – Score wird erst in _finalizeHero() gesetzt.
-    // Diese Funktion bleibt für zukünftige Zwecke.
-  }
-
-  // ─── Alle Phasen fertig: Banner -> Ergebnis ───────────────────────────────
   function _finalizeHero() {
     _analysisComplete = true;
     const scores = Object.values(phaseScores).filter(v => v !== null);
     if (!scores.length) return;
 
-    // Gewichtung:
-    // - p4 (KI-Modell) doppelt: NUR wenn kein OCR-Ergebnis vorhanden UND kein Fallback
-    // - p6 (LLM) doppelt: tiefste Analyse, hat Vorrang
     let weighted = [...scores];
-    const p4ShouldDouble = phaseScores.p4 !== null
-      && phaseScores.p5 === null
-      && _p4IsReal;
-    if (!weighted.length) return; // NaN-Guard
     let avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
-    if (isNaN(avg)) return; // NaN-Guard
+    if (isNaN(avg)) return;
 
-    // Veto-Regel (Vorsichtsprinzip): Wenn Tiefenanalyse (P6) oder OCR (P5) 
-    // rote Flaggen werfen (score <= 40), darf das Gesamt-Bild maximal als "manipuliert" gelten!
     const minCritical = Math.min(phaseScores.p6 ?? 100, phaseScores.p5 ?? 100);
     let vetoTriggered = false;
     if (minCritical <= 40) {
-      avg = Math.min(avg, 39); // Kappung strikt unter 40, damit level "danger" wird!
+      avg = Math.min(avg, 39);
       vetoTriggered = true;
     }
 
@@ -253,43 +256,35 @@ const EchtCheckUI = (() => {
     let vt = VERDICT_TEXT[level];
     let summaryTxt = SUMMARY_TEXT[level];
     
-    // Wenn das Veto gegriffen hat, scharfen Text wählen
     if (vetoTriggered) {
       vt = { ...vt, label: 'Manipulation/Desinformation erkannt' };
       summaryTxt = 'Die KI-Tiefenanalyse und Forensik hat sehr starke Hinweise auf Bildbearbeitung, Manipulation von Kontext oder hetzerische/problematische Inhalte gefunden.';
     }
 
-    // Hero-Card styling updaten
     const hero = document.getElementById('result-hero');
     hero.className = `glass p-5 border-2 verdict-hero-${level}`;
 
-    // Banner ausblenden, Ergebnis-Block einblenden
     document.getElementById('hero-analyzing-banner').classList.add('hidden');
     const block = document.getElementById('hero-result-block');
     block.classList.remove('hidden');
 
-    // Zweites Bild-Preview befüllen
     const imgResult = document.getElementById('image-preview-result');
     const imgOrig   = document.getElementById('image-preview');
     imgResult.src = imgOrig.src;
     imgResult.alt = imgOrig.alt;
 
-    // Score-Zahl
     const numEl = document.getElementById('hero-score');
     numEl.textContent = avg;
     numEl.className = `verdict-number ${vt.num}`;
 
-    // Verdict text
     document.getElementById('hero-verdict').textContent = vt.label;
     document.getElementById('hero-summary').textContent = summaryTxt;
 
-    // Score bar (animiert)
     const fill = document.getElementById('hero-score-fill');
     fill.className = `score-fill score-${level}`;
     fill.style.width = '0%';
     setTimeout(() => { fill.style.width = avg + '%'; }, 60);
 
-    // Banner-Dots → Ergebnis-Dots spiegeln
     [['dot-p1','dot-p1b'],['dot-p2','dot-p2b'],['dot-p3','dot-p3b'],
      ['dot-p4','dot-p4b'],['dot-p5','dot-p5b']].forEach(([src, dst]) => {
       const s = document.getElementById(src);
@@ -297,11 +292,9 @@ const EchtCheckUI = (() => {
       if (s && d) d.className = s.className;
     });
 
-    // Scroll zum Ergebnis
     setTimeout(() => hero.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
 
-  // ─── Phase 6: LLM-Ergebnisse rendern ──────────────────────────────
   function _showPhase6Results(imgData, txtData) {
     const sevCls = { high:'badge-danger', medium:'badge-warning', low:'badge-info' };
     const typLbl = { hate:'Hetze', fake:'Fake-News', manipulation:'Manipulation', disinfo:'Desinformation' };
@@ -346,7 +339,6 @@ const EchtCheckUI = (() => {
     }
   }
 
-  // ─── States ────────────────────────────────────────────────────────────────
   function _showLoading(file) {
     document.getElementById('welcome-state').classList.add('hidden');
     document.getElementById('result-state').classList.add('hidden');
@@ -362,7 +354,7 @@ const EchtCheckUI = (() => {
   }
 
   function _showInitialResult(result, file) {
-    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('loading-state').classList.remove('hidden');
     document.getElementById('result-state').classList.remove('hidden');
 
     if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
@@ -373,7 +365,6 @@ const EchtCheckUI = (() => {
 
     document.getElementById('meta-info').textContent = `${result.fileName} · ${_fmtBytes(result.fileSize)} · ${result.fileType}`;
 
-    // Banner sichtbar, Ergebnis-Block versteckt
     document.getElementById('hero-analyzing-banner').classList.remove('hidden');
     document.getElementById('hero-result-block').classList.add('hidden');
     document.getElementById('result-hero').className = 'glass p-5 verdict-hero-info border-2';
@@ -384,7 +375,6 @@ const EchtCheckUI = (() => {
     document.getElementById('check-another-btn').addEventListener('click', _reset, { once: true });
   }
 
-  // ─── Phase 5 OCR ──────────────────────────────────────────────────────────
   function _showPhase5Results(ocr) {
     if (!ocr.valid) {
       document.getElementById('ocr-no-text').classList.remove('hidden');
@@ -404,7 +394,6 @@ const EchtCheckUI = (() => {
     document.getElementById('ocr-result').classList.remove('hidden');
   }
 
-  // ─── Phase-Ergebnis-Renderer ───────────────────────────────────────────────
   function _renderExifMatrix(result) {
     const exif = result.exif;
     const grid = document.getElementById('exif-matrix');
@@ -465,7 +454,6 @@ const EchtCheckUI = (() => {
 
   function _showPhase3Results(ai) {
     const grid = document.getElementById('phase3-signals');
-    // Behalte den "Was bedeutet das?" Text
     const tip = grid.querySelector('p');
     grid.innerHTML = '';
     for (const sig of [ai.periodicity, ai.smoothness, ai.colorStats, ai.checkerboard]) {
@@ -493,7 +481,6 @@ const EchtCheckUI = (() => {
     document.getElementById('phase4-result').classList.remove('hidden');
   }
 
-  // ─── Dot + Badge Helpers ───────────────────────────────────────────────────
   function _setDot(ids, level) {
     const cls = {
       safe: 'phase-dot-safe', warning: 'phase-dot-warning',
@@ -502,8 +489,7 @@ const EchtCheckUI = (() => {
     for (const id of ids) {
       const el = document.getElementById(id);
       if (el) {
-        // Basis-Klasse beibehalten (phase-dot), Status-Klasse wechseln
-        const base = el.style.cssText ? 'phase-dot' : (el.className.includes('phase-dot') ? 'phase-dot' : 'phase-dot');
+        const base = 'phase-dot';
         el.className = base + ' ' + (cls[level] || 'phase-dot-loading');
       }
     }
@@ -518,8 +504,8 @@ const EchtCheckUI = (() => {
     el.textContent = `${icons[level] || ''} ${text}`;
   }
 
-  // ─── Reset ─────────────────────────────────────────────────────────────────
   function _reset() {
+    if (_statusInterval) clearInterval(_statusInterval);
     document.getElementById('result-state').classList.add('hidden');
     document.getElementById('error-state').classList.add('hidden');
     document.getElementById('phase2-ela-block').classList.add('hidden');
@@ -530,11 +516,9 @@ const EchtCheckUI = (() => {
     document.getElementById('ocr-no-text').classList.add('hidden');
     document.getElementById('ocr-skipped').classList.add('hidden');
     document.getElementById('ocr-progress-fill').style.width = '0%';
-    // Reset Banner / Ergebnis-Block
     document.getElementById('hero-analyzing-banner').classList.remove('hidden');
     document.getElementById('hero-result-block').classList.add('hidden');
     document.getElementById('result-hero').className = 'glass p-5 verdict-hero-info border-2';
-    // Reset dots
     for (const id of ['dot-p1','dot-p2','dot-p3','dot-p4','dot-p5']) {
       const el = document.getElementById(id);
       if (el) el.className = 'phase-dot phase-dot-loading';
@@ -547,7 +531,6 @@ const EchtCheckUI = (() => {
       const el = document.getElementById(id);
       if (el) { el.className = 'badge badge-muted ml-2'; el.textContent = 'läuft…'; }
     }
-    // Phase 6 LLM-Elemente zurücksetzen
     for (const id of ['llm-offline','llm-model-missing','llm-image-result','llm-text-result','llm-no-text']) {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
@@ -557,13 +540,12 @@ const EchtCheckUI = (() => {
     document.getElementById('hero-score-fill').style.width = '0%';
     document.getElementById('welcome-state').classList.remove('hidden');
     if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
-    phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
+    phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null, p6: null };
     _analysisComplete = false;
     _p4IsReal = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // ─── Utils ─────────────────────────────────────────────────────────────────
   function _flagIcon(l) { return {danger:'🔴',warning:'⚠️',info:'ℹ️',safe:'✅'}[l] || 'ℹ️'; }
   function _fmtBytes(b) { if(b<1024) return b+'B'; if(b<1048576) return (b/1024).toFixed(1)+'KB'; return (b/1048576).toFixed(2)+'MB'; }
   function _fmtGps(a) { if(!Array.isArray(a)) return JSON.stringify(a); return `${a[0]}° ${a[1]}' ${typeof a[2]==='number'?a[2].toFixed(2):a[2]}"`; }
@@ -582,7 +564,6 @@ const EchtCheckUI = (() => {
     })();
   }
 
-  // ─── Tab-Switcher ──────────────────────────────────────────────────────────
   function switchTab(tab) {
     const isImg = tab === 'image';
     document.getElementById('tab-panel-image').classList.toggle('hidden', !isImg);
@@ -591,7 +572,6 @@ const EchtCheckUI = (() => {
     document.getElementById('tab-url').className = `px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${!isImg ? 'bg-violet-500 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`;
   }
 
-  // ─── URL-Analyse ───────────────────────────────────────────────────────────
   async function submitUrl() {
     const input = document.getElementById('url-input');
     const url = input?.value?.trim();
