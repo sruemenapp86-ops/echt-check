@@ -80,15 +80,9 @@ app.post('/analyze/image', upload.single('image'), async (req, res) => {
 
     const imageBuffer = req.file.buffer;
     const hash = crypto.createHash('md5').update(imageBuffer).digest('hex');
+    console.log(`[API /analyze/image] Empfangenes Bild Hash: ${hash}`);
 
-    // Cache pruefen (bekannte System Hashes)
-    const existing = await db.query('SELECT * FROM image_hashes WHERE phash = $1', [hash]);
-    if (existing.rows.length > 0) {
-      const row = existing.rows[0];
-      return res.json({ source: 'cache', hash, ...row });
-    }
-
-    // ─── NEU: Community-Schild greift vor Phase 2 ein ───
+    // ─── NEU: 1. Priorität: Community-Schild (überschreibt alten Cache!) ───
     try {
       const comFake = await db.query('SELECT * FROM community_fakes WHERE image_hash = $1', [hash]);
       if (comFake.rows.length > 0) {
@@ -102,6 +96,13 @@ app.post('/analyze/image', upload.single('image'), async (req, res) => {
         });
       }
     } catch(err) {}
+
+    // ─── 2. Priorität: Normaler System Cache (Modell-Ergebnisse) ───
+    const existing = await db.query('SELECT * FROM image_hashes WHERE phash = $1', [hash]);
+    if (existing.rows.length > 0) {
+      const row = existing.rows[0];
+      return res.json({ source: 'cache', hash, ...row });
+    }
 
     // KI-Modell anfragen (Wenn unbekannt)
     let aiResult = { score: 50, verdict: 'uncertain', confidence: 0, method: 'statistical_fallback' };
