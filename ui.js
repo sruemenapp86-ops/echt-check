@@ -415,7 +415,11 @@ const EchtCheckUI = (() => {
           flagsEl.innerHTML = `<div class="glass p-2 rounded-lg border border-amber-700/30 text-xs text-amber-400">⚠️ ${imgData.verdict || 'Auffälligkeiten erkannt'}</div>`;
         }
       } else {
-        flagsEl.innerHTML = `<div class="glass p-2 rounded-lg border border-emerald-700/30 text-xs text-emerald-400">✅ Keine Manipulationsmerkmale erkannt</div>`;
+        if (typeof phaseScores.p4 === 'number' && phaseScores.p4 <= 55) {
+           flagsEl.innerHTML = `<div class="glass p-2 rounded-lg border border-amber-700/30 text-xs text-amber-400">⚠️ LLM findet keine sichtbaren Fotomontagen, aber Pixel-KI meldet Anomalien!</div>`;
+        } else {
+           flagsEl.innerHTML = `<div class="glass p-2 rounded-lg border border-emerald-700/30 text-xs text-emerald-400">✅ Keine Manipulationsmerkmale erkannt</div>`;
+        }
       }
       document.getElementById('llm-image-explanation').textContent = imgData.explanation || imgData.verdict || '';
     }
