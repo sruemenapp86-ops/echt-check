@@ -371,7 +371,7 @@ app.post('/analyze/llm', async (req, res) => {
 async function _executeLlmAnalysis({ type, text, imageBase64 }) {
   try {
     if (type === 'text') {
-      if (!text || text.length < 10) return res.status(400).json({ error: 'Text zu kurz' });
+      if (!text || text.length < 10) throw new Error('Text zu kurz');
 
       const prompt = `Du bist ein Experte für Medienkompetenz und Faktenprüfung in Deutschland.
 Analysiere den folgenden Text auf problematische Inhalte. Sei präzise und fair.
@@ -394,7 +394,7 @@ Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
 
       let parsed;
       try { parsed = typeof r.data.response === 'string' ? JSON.parse(r.data.response) : r.data.response; }
-      catch { return res.status(500).json({ error: 'LLM hat kein valides JSON geliefert', raw: r.data.response?.slice(0,200) }); }
+      catch { throw new Error('LLM hat kein valides JSON geliefert: ' + r.data.response?.slice(0,200)); }
 
       // ─── NEU: Vollautomatischer Web Fact-Check Abgleich ───
       if (parsed.searchQuery) {
@@ -405,10 +405,10 @@ Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
         console.log('[FactCheck] Kein Suchbegriff von der KI geliefert.');
       }
 
-      res.json({ type: 'text', model: LLM_TEXT_MODEL, ...parsed });
+      return { type: 'text', model: LLM_TEXT_MODEL, ...parsed };
 
     } else if (type === 'image') {
-      if (!imageBase64) return res.status(400).json({ error: 'imageBase64 fehlt' });
+      if (!imageBase64) throw new Error('imageBase64 fehlt');
 
       const prompt = `Du bist ein forensischer Bildanalyst. Untersuche dieses Bild auf Anzeichen von Manipulation oder Fälschung.
 
@@ -435,9 +435,9 @@ WICHTIG: Das Array 'flags' darf nur die tatsächlichen, im Bild gefundenen Fehle
 
       let parsed;
       try { parsed = typeof r.data.response === 'string' ? JSON.parse(r.data.response) : r.data.response; }
-      catch { return res.status(500).json({ error: 'Vision-LLM hat kein valides JSON', raw: r.data.response?.slice(0,200) }); }
+      catch { throw new Error('Vision-LLM hat kein valides JSON geliefert: ' + r.data.response?.slice(0, 200)); }
 
-      res.json({ type: 'image', model: LLM_VISION_MODEL, ...parsed });
+      return { type: 'image', model: LLM_VISION_MODEL, ...parsed };
     }
   } catch(e) {
     if (e.code === 'ECONNABORTED') { e.offline = false; e.message = 'LLM-Timeout – Modell zu langsam'; throw e; }
