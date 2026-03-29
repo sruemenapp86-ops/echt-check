@@ -1,590 +1,1012 @@
 <!DOCTYPE html>
 <html lang="de">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Echt-Check – Ist dieses Bild oder diese Meldung echt?</title>
-<meta name="description" content="Prüfe kostenlos ob ein Bild echt ist, KI-generiert wurde oder eine Meldung manipulativ ist. OCR-Textanalyse, ELA-Scanner und KI-Modell.">
-<link rel="manifest" href="manifest.json">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-  *{font-family:'Inter',sans-serif;box-sizing:border-box}
-  body{background:#060c18;color:#e2e8f0;min-height:100vh}
-  .glass{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:20px;backdrop-filter:blur(12px)}
-  .glass-sm{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Echt-Check – Ist dieses Bild oder diese Meldung echt?</title>
+  <meta name="description"
+    content="Prüfe kostenlos ob ein Bild echt ist, KI-generiert wurde oder eine Meldung manipulativ ist. OCR-Textanalyse, ELA-Scanner und KI-Modell.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+      box-sizing: border-box
+    }
 
-  /* Verdict Hero */
-  .verdict-hero-safe{background:linear-gradient(135deg,rgba(16,185,129,0.12),rgba(5,150,105,0.06));border-color:rgba(16,185,129,0.25)}
-  .verdict-hero-warning{background:linear-gradient(135deg,rgba(245,158,11,0.12),rgba(217,119,6,0.06));border-color:rgba(245,158,11,0.25)}
-  .verdict-hero-danger{background:linear-gradient(135deg,rgba(239,68,68,0.12),rgba(185,28,28,0.06));border-color:rgba(239,68,68,0.25)}
-  .verdict-hero-info{background:linear-gradient(135deg,rgba(99,102,241,0.10),rgba(67,56,202,0.05));border-color:rgba(99,102,241,0.2)}
+    body {
+      background: #060c18;
+      color: #e2e8f0;
+      min-height: 100vh
+    }
 
-  /* Phase indicator badges */
-  .phase-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0;transition:background 0.3s}
-  .phase-dot-safe{background:#10b981}
-  .phase-dot-warning{background:#f59e0b}
-  .phase-dot-danger{background:#ef4444}
-  .phase-dot-loading{background:rgba(6,182,212,0.5);animation:pulse 1s infinite}
-  @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+    .glass {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+      backdrop-filter: blur(12px)
+    }
 
-  /* Score bar */
-  .score-bar{height:8px;background:rgba(255,255,255,0.06);border-radius:999px;overflow:hidden}
-  .score-fill{height:100%;border-radius:999px;transition:width 1s cubic-bezier(.4,0,.2,1)}
-  .score-safe{background:linear-gradient(90deg,#059669,#10b981,#34d399)}
-  .score-warning{background:linear-gradient(90deg,#d97706,#f59e0b,#fbbf24)}
-  .score-danger{background:linear-gradient(90deg,#b91c1c,#ef4444,#f87171)}
-  .score-info{background:linear-gradient(90deg,#4338ca,#6366f1,#a5b4fc)}
+    .glass-sm {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px
+    }
 
-  /* Phase cards (accordion) */
-  .phase-accordion{background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.06);border-radius:14px;overflow:hidden;transition:border-color .2s}
-  .phase-accordion:hover{border-color:rgba(255,255,255,0.1)}
-  .phase-accordion summary{list-style:none;cursor:pointer;padding:14px 18px;display:flex;align-items:center;gap:12px}
-  .phase-accordion summary::-webkit-details-marker{display:none}
-  .phase-accordion[open] summary{border-bottom:1px solid rgba(255,255,255,0.06)}
-  .phase-accordion-body{padding:18px}
-  .chevron{margin-left:auto;transition:transform .25s;color:#475569;font-size:12px}
-  .phase-accordion[open] .chevron{transform:rotate(180deg)}
+    /* Verdict Hero */
+    .verdict-hero-safe {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.06));
+      border-color: rgba(16, 185, 129, 0.25)
+    }
 
-  /* Flag cards */
-  .flag-card{padding:11px 14px;border-radius:10px;margin-bottom:6px;border:1px solid transparent}
-  .flag-danger{background:rgba(239,68,68,0.07);border-color:rgba(239,68,68,0.18)}
-  .flag-warning{background:rgba(245,158,11,0.07);border-color:rgba(245,158,11,0.18)}
-  .flag-info{background:rgba(99,102,241,0.07);border-color:rgba(99,102,241,0.18)}
-  .flag-safe{background:rgba(16,185,129,0.07);border-color:rgba(16,185,129,0.18)}
-  .flag-header{display:flex;align-items:center;gap:8px;margin-bottom:3px;font-weight:500;font-size:13px}
-  .flag-detail{font-size:12px;color:#64748b;line-height:1.5;margin-top:2px}
+    .verdict-hero-warning {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(217, 119, 6, 0.06));
+      border-color: rgba(245, 158, 11, 0.25)
+    }
 
-  /* EXIF cells */
-  .exif-cell{background:rgba(255,255,255,0.03);border-radius:8px;padding:10px 12px}
-  .exif-label{display:block;font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
-  .exif-value{font-size:12px;color:#cbd5e1;font-weight:500;word-break:break-all}
-  .exif-empty{grid-column:1/-1;text-align:center;color:#334155;font-size:13px;padding:16px}
+    .verdict-hero-danger {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(185, 28, 28, 0.06));
+      border-color: rgba(239, 68, 68, 0.25)
+    }
 
-  /* Misc */
-  .spinner{border:2px solid rgba(255,255,255,0.08);border-top-color:#06b6d4;border-radius:50%;animation:spin .7s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  #drop-zone.drag-active{border-color:#06b6d4!important;background:rgba(6,182,212,0.04)}
-  canvas#particle-canvas{position:fixed;top:0;left:0;pointer-events:none;z-index:0;opacity:.3}
-  .hidden{display:none!important}
-  .badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:999px}
-  .badge-safe{background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.2)}
-  .badge-warning{background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.2)}
-  .badge-danger{background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.2)}
-  .badge-info{background:rgba(99,102,241,0.12);color:#a5b4fc;border:1px solid rgba(99,102,241,0.2)}
-  .badge-muted{background:rgba(255,255,255,0.04);color:#475569;border:1px solid rgba(255,255,255,0.08)}
+    .verdict-hero-info {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.10), rgba(67, 56, 202, 0.05));
+      border-color: rgba(99, 102, 241, 0.2)
+    }
 
-  /* Big verdict number */
-  .verdict-number{font-size:72px;font-weight:900;line-height:1;letter-spacing:-3px}
-  .verdict-number-safe{color:#10b981}
-  .verdict-number-warning{color:#f59e0b}
-  .verdict-number-danger{color:#ef4444}
-  .verdict-number-info{color:#6366f1}
+    /* Phase indicator badges */
+    .phase-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      flex-shrink: 0;
+      transition: background 0.3s
+    }
 
-  /* ─── Mobile Responsive ────────────────────────────────────────── */
-  @media (max-width:480px){
-    /* Hero score: klein genug dass Verdict-Text nicht abgeschnitten wird */
-    .verdict-number{font-size:52px;letter-spacing:-2px}
-    /* Bild-Vorschau kleiner */
-    #image-preview{width:72px!important;height:72px!important;border-radius:12px}
-    /* Hero flex: bild oben, dann score+text */
-    #result-hero > div:first-child{flex-direction:column;align-items:flex-start;gap:12px}
-    /* Verdict-Text soll umbrechen, nicht overflow */
-    #hero-verdict{font-size:16px!important}
-    /* H1 kleiner */
-    h1.text-5xl{font-size:1.875rem!important;line-height:1.2}
-    /* Header-Badge umbrechend */
-    header .badge{font-size:10px;padding:3px 8px;max-width:160px;text-align:center;line-height:1.3}
-    /* Drop-zone padding reduzieren */
-    #drop-zone{padding:2rem 1rem!important}
-    /* Meta-info umbrechen */
-    #result-hero .flex.gap-3{flex-wrap:wrap;gap:8px}
-    /* Phase-punkte kompakter */
-    #result-hero .flex.gap-3 > div{gap:4px}
-    /* URL-Input stack */
-    #tab-panel-url .flex.gap-3{flex-direction:column}
-    #url-submit-btn{width:100%}
-  }
-  @media (max-width:360px){
-    .verdict-number{font-size:44px}
-    #image-preview{width:60px!important;height:60px!important}
-  }
-</style>
+    .phase-dot-safe {
+      background: #10b981
+    }
+
+    .phase-dot-warning {
+      background: #f59e0b
+    }
+
+    .phase-dot-danger {
+      background: #ef4444
+    }
+
+    .phase-dot-loading {
+      background: rgba(6, 182, 212, 0.5);
+      animation: pulse 1s infinite
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: .4
+      }
+
+      50% {
+        opacity: 1
+      }
+    }
+
+    /* Score bar */
+    .score-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden
+    }
+
+    .score-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 1s cubic-bezier(.4, 0, .2, 1)
+    }
+
+    .score-safe {
+      background: linear-gradient(90deg, #059669, #10b981, #34d399)
+    }
+
+    .score-warning {
+      background: linear-gradient(90deg, #d97706, #f59e0b, #fbbf24)
+    }
+
+    .score-danger {
+      background: linear-gradient(90deg, #b91c1c, #ef4444, #f87171)
+    }
+
+    .score-info {
+      background: linear-gradient(90deg, #4338ca, #6366f1, #a5b4fc)
+    }
+
+    /* Phase cards (accordion) */
+    .phase-accordion {
+      background: rgba(255, 255, 255, 0.025);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      overflow: hidden;
+      transition: border-color .2s
+    }
+
+    .phase-accordion:hover {
+      border-color: rgba(255, 255, 255, 0.1)
+    }
+
+    .phase-accordion summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px
+    }
+
+    .phase-accordion summary::-webkit-details-marker {
+      display: none
+    }
+
+    .phase-accordion[open] summary {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06)
+    }
+
+    .phase-accordion-body {
+      padding: 18px
+    }
+
+    .chevron {
+      margin-left: auto;
+      transition: transform .25s;
+      color: #475569;
+      font-size: 12px
+    }
+
+    .phase-accordion[open] .chevron {
+      transform: rotate(180deg)
+    }
+
+    /* Flag cards */
+    .flag-card {
+      padding: 11px 14px;
+      border-radius: 10px;
+      margin-bottom: 6px;
+      border: 1px solid transparent
+    }
+
+    .flag-danger {
+      background: rgba(239, 68, 68, 0.07);
+      border-color: rgba(239, 68, 68, 0.18)
+    }
+
+    .flag-warning {
+      background: rgba(245, 158, 11, 0.07);
+      border-color: rgba(245, 158, 11, 0.18)
+    }
+
+    .flag-info {
+      background: rgba(99, 102, 241, 0.07);
+      border-color: rgba(99, 102, 241, 0.18)
+    }
+
+    .flag-safe {
+      background: rgba(16, 185, 129, 0.07);
+      border-color: rgba(16, 185, 129, 0.18)
+    }
+
+    .flag-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 3px;
+      font-weight: 500;
+      font-size: 13px
+    }
+
+    .flag-detail {
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.5;
+      margin-top: 2px
+    }
+
+    /* EXIF cells */
+    .exif-cell {
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      padding: 10px 12px
+    }
+
+    .exif-label {
+      display: block;
+      font-size: 10px;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      margin-bottom: 2px
+    }
+
+    .exif-value {
+      font-size: 12px;
+      color: #cbd5e1;
+      font-weight: 500;
+      word-break: break-all
+    }
+
+    .exif-empty {
+      grid-column: 1/-1;
+      text-align: center;
+      color: #334155;
+      font-size: 13px;
+      padding: 16px
+    }
+
+    /* Misc */
+    .spinner {
+      border: 2px solid rgba(255, 255, 255, 0.08);
+      border-top-color: #06b6d4;
+      border-radius: 50%;
+      animation: spin .7s linear infinite
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    #drop-zone.drag-active {
+      border-color: #06b6d4 !important;
+      background: rgba(6, 182, 212, 0.04)
+    }
+
+    canvas#particle-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: .3
+    }
+
+    .hidden {
+      display: none !important
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px
+    }
+
+    .badge-safe {
+      background: rgba(16, 185, 129, 0.12);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.2)
+    }
+
+    .badge-warning {
+      background: rgba(245, 158, 11, 0.12);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.2)
+    }
+
+    .badge-danger {
+      background: rgba(239, 68, 68, 0.12);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.2)
+    }
+
+    .badge-info {
+      background: rgba(99, 102, 241, 0.12);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.2)
+    }
+
+    .badge-muted {
+      background: rgba(255, 255, 255, 0.04);
+      color: #475569;
+      border: 1px solid rgba(255, 255, 255, 0.08)
+    }
+
+    /* Big verdict number */
+    .verdict-number {
+      font-size: 72px;
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -3px
+    }
+
+    .verdict-number-safe {
+      color: #10b981
+    }
+
+    .verdict-number-warning {
+      color: #f59e0b
+    }
+
+    .verdict-number-danger {
+      color: #ef4444
+    }
+
+    .verdict-number-info {
+      color: #6366f1
+    }
+
+    /* ─── Mobile Responsive ────────────────────────────────────────── */
+    @media (max-width:480px) {
+
+      /* Hero score: klein genug dass Verdict-Text nicht abgeschnitten wird */
+      .verdict-number {
+        font-size: 52px;
+        letter-spacing: -2px
+      }
+
+      /* Bild-Vorschau kleiner */
+      #image-preview {
+        width: 72px !important;
+        height: 72px !important;
+        border-radius: 12px
+      }
+
+      /* Hero flex: bild oben, dann score+text */
+      #result-hero>div:first-child {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px
+      }
+
+      /* Verdict-Text soll umbrechen, nicht overflow */
+      #hero-verdict {
+        font-size: 16px !important
+      }
+
+      /* H1 kleiner */
+      h1.text-5xl {
+        font-size: 1.875rem !important;
+        line-height: 1.2
+      }
+
+      /* Header-Badge umbrechend */
+      header .badge {
+        font-size: 10px;
+        padding: 3px 8px;
+        max-width: 160px;
+        text-align: center;
+        line-height: 1.3
+      }
+
+      /* Drop-zone padding reduzieren */
+      #drop-zone {
+        padding: 2rem 1rem !important
+      }
+
+      /* Meta-info umbrechen */
+      #result-hero .flex.gap-3 {
+        flex-wrap: wrap;
+        gap: 8px
+      }
+
+      /* Phase-punkte kompakter */
+      #result-hero .flex.gap-3>div {
+        gap: 4px
+      }
+
+      /* URL-Input stack */
+      #tab-panel-url .flex.gap-3 {
+        flex-direction: column
+      }
+
+      #url-submit-btn {
+        width: 100%
+      }
+    }
+
+    @media (max-width:360px) {
+      .verdict-number {
+        font-size: 44px
+      }
+
+      #image-preview {
+        width: 60px !important;
+        height: 60px !important
+      }
+    }
+  </style>
 </head>
+
 <body>
-<canvas id="particle-canvas"></canvas>
-<div class="relative z-10 min-h-screen">
+  <canvas id="particle-canvas"></canvas>
+  <div class="relative z-10 min-h-screen">
 
-  <!-- Header -->
-  <header class="border-b border-white/5 py-4 px-6 bg-[#0a0f1a]/80 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-3xl mx-auto flex items-center justify-between">
-      <div class="flex items-center gap-3.5 group cursor-pointer" onclick="window.location.reload()">
-        <img src="logo.jpg" alt="Echt-Check Logo" class="h-12 w-12 object-cover rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.15)] ring-1 ring-white/10 transition-transform group-hover:scale-105">
-        <div class="flex flex-col justify-center">
-          <h1 class="text-2xl font-bold tracking-tight leading-none"><span class="text-cyan-400">Echt</span><span class="text-white">-Check</span></h1>
-          <span class="text-slate-400 text-[11px] font-semibold tracking-widest uppercase mt-1.5 opacity-80">Forensik v3.0</span>
+    <!-- Header -->
+    <header class="border-b border-white/5 py-4 px-6 bg-[#0a0f1a]/80 backdrop-blur-md sticky top-0 z-50">
+      <div class="max-w-3xl mx-auto flex items-center justify-between">
+        <div class="flex items-center gap-3.5 group cursor-pointer" onclick="window.location.reload()">
+          <img src="logo.jpg" alt="Echt-Check Logo"
+            class="h-12 w-12 object-cover rounded-xl shadow-[0_0_15px_rgba(34,211,238,0.15)] ring-1 ring-white/10 transition-transform group-hover:scale-105">
+          <div class="flex flex-col justify-center">
+            <h1 class="text-2xl font-bold tracking-tight leading-none"><span class="text-cyan-400">Echt</span><span
+                class="text-white">-Check</span></h1>
+            <span class="text-slate-400 text-[11px] font-semibold tracking-widest uppercase mt-1.5 opacity-80">Forensik
+              v3.0</span>
+          </div>
         </div>
+        <span class="badge badge-info hidden sm:inline-flex bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/20">🔐
+          Lokale Serveranalyse</span>
       </div>
-      <span class="badge badge-info hidden sm:inline-flex bg-cyan-500/10 text-cyan-400 ring-1 ring-cyan-500/20">🔐 Lokale Serveranalyse</span>
-    </div>
-  </header>
+    </header>
 
-  <main class="max-w-3xl mx-auto px-4 py-10 space-y-5">
+    <main class="max-w-3xl mx-auto px-4 py-10 space-y-5">
 
-    <!-- WELCOME STATE -->
-    <div id="welcome-state">
-      <!-- Tab-Switcher -->
-      <div class="flex gap-2 justify-center mb-8 flex-wrap">
-        <button id="tab-image" onclick="EchtCheckUI.switchTab('image')" class="px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-cyan-500 text-slate-900">📷 Bild prüfen</button>
-        <button id="tab-url" onclick="EchtCheckUI.switchTab('url')" class="px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10">🔗 URL / Link prüfen</button>
-        <button id="tab-report" onclick="EchtCheckUI.switchTab('report')" class="px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-white/5 border border-rose-500/20 text-rose-400 hover:text-white hover:bg-rose-500/20">🚨 Fake melden</button>
-      </div>
-
-      <!-- Bild-Tab -->
-      <div id="tab-panel-image">
-        <div class="text-center mb-8">
-          <div class="inline-block bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
-            🔎 Metadaten · ELA · Frequenzanalyse · OCR · KI-Analyse (Backend+Lokale LLM)
-          </div>
-          <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Ist das Bild oder die Meldung <span class="text-cyan-400">echt</span>?</h1>
-          <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
-            Lade ein Bild oder Screenshot (z.B. Facebook-Post) hoch oder füge es mit <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-xs">Strg+V</kbd> ein.
-          </p>
-        </div>
-        <div id="drop-zone" class="glass border-2 border-dashed border-white/10 rounded-2xl p-14 text-center cursor-pointer hover:border-cyan-500/40 transition-all">
-          <div class="text-5xl mb-4">🔍</div>
-          <p class="text-white font-semibold text-lg mb-2">Bild oder Screenshot hierher ziehen</p>
-          <p class="text-slate-500 text-sm mb-4">oder klicken · oder <kbd class="bg-white/10 px-1.5 py-0.5 rounded">Strg+V</kbd></p>
-          <div class="flex justify-center gap-4 text-xs text-slate-600 flex-wrap">
-            <span>📷 Kamerafoto (JPG/PNG)</span><span>·</span><span>📱 Screenshot (Facebook, WhatsApp…)</span><span>·</span><span>max 20 MB</span>
-          </div>
-          <input id="file-input" type="file" accept="image/*" class="hidden">
-        </div>
-      </div>
-
-      <!-- URL-Tab -->
-      <div id="tab-panel-url" class="hidden">
-        <div class="text-center mb-8">
-          <div class="inline-block bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
-            🔗 Domain-Check · Text-Extraktion · Fake-News-Analyse · Hetze-Erkennung
-          </div>
-          <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Link oder Artikel <span class="text-violet-400">prüfen</span></h1>
-          <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
-            Füge die URL eines Artikels, Posts oder Links ein. Das System analysiert Inhalt und Quelle automatisch.
-          </p>
-        </div>
-        <div class="glass p-6 space-y-4 rounded-2xl">
-          <div class="flex gap-3">
-            <input id="url-input" type="url" placeholder="https://beispiel.de/artikel-oder-post..."
-              class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors"
-              onkeydown="if(event.key==='Enter') EchtCheckUI.submitUrl()">
-            <button onclick="EchtCheckUI.submitUrl()" id="url-submit-btn"
-              class="px-6 py-3 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-semibold text-sm transition-all hover:shadow-lg hover:shadow-violet-500/20 active:scale-95 flex-shrink-0">
-              Prüfen →
-            </button>
-          </div>
-          <p class="text-xs text-slate-600">Funktioniert mit öffentlich erreichbaren Seiten. Facebook-Posts ohne Login können nicht abgerufen werden.</p>
-        </div>
-      </div>
-
-      <!-- Fake Melden Tab -->
-      <div id="tab-panel-report" class="hidden">
-        <div class="text-center mb-8">
-          <div class="inline-block bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
-            🚨 Community-Schild · Fake-Datenbank füttern
-          </div>
-          <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Fake entdeckt? <span class="text-rose-400">Melde ihn!</span></h1>
-          <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
-            Hilf mit, das Netz sauber zu halten. Lade ein Fake-Bild hoch, um seinen Fingerabdruck vorab in unserer Datenbank für andere Nutzer zu verbrennen.
-          </p>
+      <!-- WELCOME STATE -->
+      <div id="welcome-state">
+        <!-- Tab-Switcher -->
+        <div class="flex gap-2 justify-center mb-8 flex-wrap">
+          <button id="tab-image" onclick="EchtCheckUI.switchTab('image')"
+            class="px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-cyan-500 text-slate-900">📷 Bild
+            prüfen</button>
+          <button id="tab-url" onclick="EchtCheckUI.switchTab('url')"
+            class="px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10">🔗
+            URL / Link prüfen</button>
+          <button id="tab-report" onclick="EchtCheckUI.switchTab('report')"
+            class="px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-white/5 border border-rose-500/20 text-rose-400 hover:text-white hover:bg-rose-500/20">🚨
+            Fake melden</button>
         </div>
 
-        <div class="glass p-6 space-y-5 rounded-2xl border-rose-500/20">
-          <div id="report-drop-zone" class="border-2 border-dashed border-rose-500/30 rounded-xl p-8 text-center cursor-pointer hover:border-rose-400/50 transition-all bg-rose-500/5">
-            <div class="text-4xl mb-3">📸</div>
-            <p class="text-rose-200 font-semibold text-sm mb-1">Fake-Bild hierher ziehen oder klicken</p>
-            <p class="text-rose-400/60 text-xs">Strg+V funktioniert ebenfalls</p>
-            <input id="report-file-input" type="file" accept="image/*" class="hidden">
+        <!-- Bild-Tab -->
+        <div id="tab-panel-image">
+          <div class="text-center mb-8">
+            <div
+              class="inline-block bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
+              🔎 Metadaten · ELA · Frequenzanalyse · OCR · KI-Analyse (Backend+Lokale LLM)
+            </div>
+            <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Ist das Bild
+              oder die Meldung <span class="text-cyan-400">echt</span>?</h1>
+            <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
+              Lade ein Bild oder Screenshot (z.B. Facebook-Post) hoch oder füge es mit <kbd
+                class="bg-white/10 px-1.5 py-0.5 rounded text-xs">Strg+V</kbd> ein.
+            </p>
           </div>
-          
-          <div id="report-preview-container" class="hidden items-center gap-4 bg-white/5 p-3 rounded-xl border border-white/10">
-            <img id="report-preview-img" src="" class="w-16 h-16 rounded object-cover">
-            <div class="flex-1 min-w-0">
-               <p id="report-preview-name" class="text-sm font-semibold text-white truncate"></p>
-               <button onclick="EchtCheckUI.clearReportImage()" class="text-xs text-rose-400 hover:text-rose-300 mt-1 font-semibold">Auswahl aufheben</button>
+          <div id="drop-zone"
+            class="glass border-2 border-dashed border-white/10 rounded-2xl p-14 text-center cursor-pointer hover:border-cyan-500/40 transition-all">
+            <div class="text-5xl mb-4">🔍</div>
+            <p class="text-white font-semibold text-lg mb-2">Bild oder Screenshot hierher ziehen</p>
+            <p class="text-slate-500 text-sm mb-4">oder klicken · oder <kbd
+                class="bg-white/10 px-1.5 py-0.5 rounded">Strg+V</kbd></p>
+            <div class="flex justify-center gap-4 text-xs text-slate-600 flex-wrap">
+              <span>📷 Kamerafoto (JPG/PNG)</span><span>·</span><span>📱 Screenshot (Facebook,
+                WhatsApp…)</span><span>·</span><span>max 20 MB</span>
+            </div>
+            <input id="file-input" type="file" accept="image/*" class="hidden">
+          </div>
+        </div>
+
+        <!-- URL-Tab -->
+        <div id="tab-panel-url" class="hidden">
+          <div class="text-center mb-8">
+            <div
+              class="inline-block bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
+              🔗 Domain-Check · Text-Extraktion · Fake-News-Analyse · Hetze-Erkennung
+            </div>
+            <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Link oder
+              Artikel <span class="text-violet-400">prüfen</span></h1>
+            <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
+              Füge die URL eines Artikels, Posts oder Links ein. Das System analysiert Inhalt und Quelle automatisch.
+            </p>
+          </div>
+          <div class="glass p-6 space-y-4 rounded-2xl">
+            <div class="flex gap-3">
+              <input id="url-input" type="url" placeholder="https://beispiel.de/artikel-oder-post..."
+                class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors"
+                onkeydown="if(event.key==='Enter') EchtCheckUI.submitUrl()">
+              <button onclick="EchtCheckUI.submitUrl()" id="url-submit-btn"
+                class="px-6 py-3 rounded-xl bg-violet-500 hover:bg-violet-400 text-white font-semibold text-sm transition-all hover:shadow-lg hover:shadow-violet-500/20 active:scale-95 flex-shrink-0">
+                Prüfen →
+              </button>
+            </div>
+            <p class="text-xs text-slate-600">Funktioniert mit öffentlich erreichbaren Seiten. Facebook-Posts ohne Login
+              können nicht abgerufen werden.</p>
+          </div>
+        </div>
+
+        <!-- Fake Melden Tab -->
+        <div id="tab-panel-report" class="hidden">
+          <div class="text-center mb-8">
+            <div
+              class="inline-block bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
+              🚨 Community-Schild · Fake-Datenbank füttern
+            </div>
+            <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Fake entdeckt?
+              <span class="text-rose-400">Melde ihn!</span></h1>
+            <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
+              Hilf mit, das Netz sauber zu halten. Lade ein Fake-Bild hoch, um seinen Fingerabdruck vorab in unserer
+              Datenbank für andere Nutzer zu verbrennen.
+            </p>
+          </div>
+
+          <div class="glass p-6 space-y-5 rounded-2xl border-rose-500/20">
+            <div id="report-drop-zone"
+              class="border-2 border-dashed border-rose-500/30 rounded-xl p-8 text-center cursor-pointer hover:border-rose-400/50 transition-all bg-rose-500/5">
+              <div class="text-4xl mb-3">📸</div>
+              <p class="text-rose-200 font-semibold text-sm mb-1">Fake-Bild hierher ziehen oder klicken</p>
+              <p class="text-rose-400/60 text-xs">Strg+V funktioniert ebenfalls</p>
+              <input id="report-file-input" type="file" accept="image/*" class="hidden">
+            </div>
+
+            <div id="report-preview-container"
+              class="hidden items-center gap-4 bg-white/5 p-3 rounded-xl border border-white/10">
+              <img id="report-preview-img" src="" class="w-16 h-16 rounded object-cover">
+              <div class="flex-1 min-w-0">
+                <p id="report-preview-name" class="text-sm font-semibold text-white truncate"></p>
+                <button onclick="EchtCheckUI.clearReportImage()"
+                  class="text-xs text-rose-400 hover:text-rose-300 mt-1 font-semibold">Auswahl aufheben</button>
+              </div>
+            </div>
+
+            <div class="space-y-3 opacity-50 pointer-events-none transition-opacity" id="report-form-body">
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Beweis-Link
+                  (Optional)</label>
+                <input id="report-proof-input" type="url" placeholder="z.B. Link zum Correctiv-Artikel"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-rose-500/50 transition-colors">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Kurzer Kommentar
+                  (Optional)</label>
+                <input id="report-comment-input" type="text" placeholder="Um welche Falschmeldung geht es hier?"
+                  class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-rose-500/50 transition-colors">
+              </div>
+              <button onclick="EchtCheckUI.submitReport()" id="report-submit-btn"
+                class="w-full py-3.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-sm transition-all hover:shadow-lg hover:shadow-rose-500/20 active:scale-95 flex items-center justify-center gap-2 mt-2">
+                🚨 Dauerhaft in Echt-Check Datenbank verbrennen
+              </button>
             </div>
           </div>
-          
-          <div class="space-y-3 opacity-50 pointer-events-none transition-opacity" id="report-form-body">
-            <div>
-              <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Beweis-Link (Optional)</label>
-              <input id="report-proof-input" type="url" placeholder="z.B. Link zum Correctiv-Artikel"
-                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-rose-500/50 transition-colors">
-            </div>
-            <div>
-              <label class="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Kurzer Kommentar (Optional)</label>
-              <input id="report-comment-input" type="text" placeholder="Um welche Falschmeldung geht es hier?"
-                class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-rose-500/50 transition-colors">
-            </div>
-            <button onclick="EchtCheckUI.submitReport()" id="report-submit-btn"
-              class="w-full py-3.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-sm transition-all hover:shadow-lg hover:shadow-rose-500/20 active:scale-95 flex items-center justify-center gap-2 mt-2">
-              🚨 Dauerhaft in Echt-Check Datenbank verbrennen
-            </button>
+        </div>
+      </div>
+
+      <!-- LOADING STATE -->
+      <div id="loading-state" class="hidden glass p-8">
+        <div class="flex items-center gap-5 mb-6">
+          <div class="spinner w-10 h-10 flex-shrink-0"></div>
+          <div>
+            <p class="text-white font-semibold">Analysiere <span id="loading-filename" class="text-cyan-400"></span></p>
+            <p class="text-slate-500 text-sm mt-1">Alle 4 Analysestufen werden gleichzeitig ausgeführt …</p>
+          </div>
+        </div>
+        <!-- Phase progress indicators -->
+        <div class="grid grid-cols-2 gap-2">
+          <div class="glass-sm px-4 py-3 flex items-center gap-3">
+            <div id="ld-p1" class="phase-dot phase-dot-loading"></div><span
+              class="text-xs text-slate-400">Metadaten</span>
+          </div>
+          <div class="glass-sm px-4 py-3 flex items-center gap-3">
+            <div id="ld-p2" class="phase-dot phase-dot-loading"></div><span
+              class="text-xs text-slate-400">Bildstruktur</span>
+          </div>
+          <div class="glass-sm px-4 py-3 flex items-center gap-3">
+            <div id="ld-p3" class="phase-dot phase-dot-loading"></div><span
+              class="text-xs text-slate-400">Frequenzanalyse</span>
+          </div>
+          <div class="glass-sm px-4 py-3 flex items-center gap-3">
+            <div id="ld-p4" class="phase-dot phase-dot-loading"></div><span
+              class="text-xs text-slate-400">KI-Modell</span>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- LOADING STATE -->
-    <div id="loading-state" class="hidden glass p-8">
-      <div class="flex items-center gap-5 mb-6">
-        <div class="spinner w-10 h-10 flex-shrink-0"></div>
-        <div>
-          <p class="text-white font-semibold">Analysiere <span id="loading-filename" class="text-cyan-400"></span></p>
-          <p class="text-slate-500 text-sm mt-1">Alle 4 Analysestufen werden gleichzeitig ausgeführt …</p>
-        </div>
+      <!-- ERROR STATE -->
+      <div id="error-state" class="hidden glass p-8 text-center space-y-4">
+        <div class="text-5xl">❌</div>
+        <h2 class="text-white font-semibold text-lg">Analyse fehlgeschlagen</h2>
+        <p id="error-message" class="text-red-400 text-sm"></p>
+        <button id="retry-btn"
+          class="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-all">Erneut
+          versuchen</button>
       </div>
-      <!-- Phase progress indicators -->
-      <div class="grid grid-cols-2 gap-2">
-        <div class="glass-sm px-4 py-3 flex items-center gap-3"><div id="ld-p1" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-400">Metadaten</span></div>
-        <div class="glass-sm px-4 py-3 flex items-center gap-3"><div id="ld-p2" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-400">Bildstruktur</span></div>
-        <div class="glass-sm px-4 py-3 flex items-center gap-3"><div id="ld-p3" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-400">Frequenzanalyse</span></div>
-        <div class="glass-sm px-4 py-3 flex items-center gap-3"><div id="ld-p4" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-400">KI-Modell</span></div>
-      </div>
-    </div>
 
-    <!-- ERROR STATE -->
-    <div id="error-state" class="hidden glass p-8 text-center space-y-4">
-      <div class="text-5xl">❌</div>
-      <h2 class="text-white font-semibold text-lg">Analyse fehlgeschlagen</h2>
-      <p id="error-message" class="text-red-400 text-sm"></p>
-      <button id="retry-btn" class="px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-medium transition-all">Erneut versuchen</button>
-    </div>
+      <!-- RESULT STATE -->
+      <div id="result-state" class="hidden space-y-4">
 
-    <!-- RESULT STATE -->
-    <div id="result-state" class="hidden space-y-4">
-
-      <!-- ★ HERO: Ergebnis-Karte ★ -->
-      <div id="result-hero" class="glass p-5 verdict-hero-info border-2">
-        <!-- Analyse läuft: Kompakter Fortschritts-Banner -->
-        <div id="hero-analyzing-banner" class="flex items-center gap-4 mb-4">
-          <div class="spinner w-6 h-6 flex-shrink-0"></div>
-          <div class="flex-1">
-            <p class="text-sm text-white font-semibold">Analyse läuft…</p>
-            <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1">
-              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p1" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Metadaten</span>
-              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p2" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Struktur</span>
-              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p3" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Frequenz</span>
-              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p5" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>OCR</span>
-              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p4" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>KI-Modell</span>
+        <!-- ★ HERO: Ergebnis-Karte ★ -->
+        <div id="result-hero" class="glass p-5 verdict-hero-info border-2">
+          <!-- Analyse läuft: Kompakter Fortschritts-Banner -->
+          <div id="hero-analyzing-banner" class="flex items-center gap-4 mb-4">
+            <div class="spinner w-6 h-6 flex-shrink-0"></div>
+            <div class="flex-1">
+              <p class="text-sm text-white font-semibold">Analyse läuft…</p>
+              <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p1"
+                    class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Metadaten</span>
+                <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p2"
+                    class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Struktur</span>
+                <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p3"
+                    class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Frequenz</span>
+                <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p5"
+                    class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>OCR</span>
+                <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p4"
+                    class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>KI-Modell</span>
+              </div>
             </div>
+            <img id="image-preview" src="" alt="Vorschau"
+              class="w-16 h-16 object-cover rounded-xl flex-shrink-0 ring-2 ring-white/10">
           </div>
-          <img id="image-preview" src="" alt="Vorschau" class="w-16 h-16 object-cover rounded-xl flex-shrink-0 ring-2 ring-white/10">
-        </div>
-        <!-- Ergebnis (erst sichtbar wenn fertig) -->
-        <div id="hero-result-block" class="hidden">
-          <div class="flex gap-4 items-start">
-            <img id="image-preview-result" src="" alt="Vorschau" class="w-20 h-20 object-cover rounded-2xl flex-shrink-0 ring-2 ring-white/10">
-            <div class="flex-1 min-w-0">
-              <div class="flex items-baseline gap-2 mb-1 flex-wrap">
-                <span id="hero-score" class="verdict-number verdict-number-info">–</span>
-                <div>
-                  <div class="text-slate-400 text-xs font-medium uppercase tracking-widest">Echtheit</div>
-                  <div id="hero-verdict" class="text-white font-bold leading-tight" style="font-size:clamp(1rem,4vw,1.25rem)">Wird analysiert…</div>
+          <!-- Ergebnis (erst sichtbar wenn fertig) -->
+          <div id="hero-result-block" class="hidden">
+            <div class="flex gap-4 items-start">
+              <img id="image-preview-result" src="" alt="Vorschau"
+                class="w-20 h-20 object-cover rounded-2xl flex-shrink-0 ring-2 ring-white/10">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-baseline gap-2 mb-1 flex-wrap">
+                  <span id="hero-score" class="verdict-number verdict-number-info">–</span>
+                  <div>
+                    <div class="text-slate-400 text-xs font-medium uppercase tracking-widest">Echtheit</div>
+                    <div id="hero-verdict" class="text-white font-bold leading-tight"
+                      style="font-size:clamp(1rem,4vw,1.25rem)">Wird analysiert…</div>
+                  </div>
                 </div>
+                <div class="score-bar my-3">
+                  <div id="hero-score-fill" class="score-fill score-info" style="width:0%"></div>
+                </div>
+                <p id="hero-summary" class="text-slate-400 text-sm leading-relaxed">Die Analyse läuft.</p>
               </div>
-              <div class="score-bar my-3">
-                <div id="hero-score-fill" class="score-fill score-info" style="width:0%"></div>
-              </div>
-              <p id="hero-summary" class="text-slate-400 text-sm leading-relaxed">Die Analyse läuft.</p>
+            </div>
+            <!-- Phase-Status (kompakt, nach Ergebnis) -->
+            <div class="flex gap-x-3 gap-y-1 mt-4 flex-wrap items-center">
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p1b" class="phase-dot"
+                  style="width:7px;height:7px"></span>Metadaten</span>
+              <span class="text-slate-700 text-xs">·</span>
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p2b" class="phase-dot"
+                  style="width:7px;height:7px"></span>Struktur</span>
+              <span class="text-slate-700 text-xs">·</span>
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p3b" class="phase-dot"
+                  style="width:7px;height:7px"></span>Frequenz</span>
+              <span class="text-slate-700 text-xs">·</span>
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p5b" class="phase-dot"
+                  style="width:7px;height:7px"></span>OCR</span>
+              <span class="text-slate-700 text-xs">·</span>
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p4b" class="phase-dot"
+                  style="width:7px;height:7px"></span>KI-Analyse</span>
+              <span id="meta-info" class="ml-auto text-xs text-slate-600"></span>
             </div>
           </div>
-          <!-- Phase-Status (kompakt, nach Ergebnis) -->
-          <div class="flex gap-x-3 gap-y-1 mt-4 flex-wrap items-center">
-            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p1b" class="phase-dot" style="width:7px;height:7px"></span>Metadaten</span>
-            <span class="text-slate-700 text-xs">·</span>
-            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p2b" class="phase-dot" style="width:7px;height:7px"></span>Struktur</span>
-            <span class="text-slate-700 text-xs">·</span>
-            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p3b" class="phase-dot" style="width:7px;height:7px"></span>Frequenz</span>
-            <span class="text-slate-700 text-xs">·</span>
-            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p5b" class="phase-dot" style="width:7px;height:7px"></span>OCR</span>
-            <span class="text-slate-700 text-xs">·</span>
-            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p4b" class="phase-dot" style="width:7px;height:7px"></span>KI-Analyse</span>
-            <span id="meta-info" class="ml-auto text-xs text-slate-600"></span>
+        </div>
+
+        <!-- Analyse-Details (aufklappbar) -->
+        <div>
+          <p class="text-xs text-slate-600 uppercase tracking-widest font-semibold mb-3 px-1">Analyse-Details</p>
+          <div class="space-y-2">
+
+            <!-- Phase 1: Metadaten -->
+            <details class="phase-accordion" id="acc-phase1">
+              <summary>
+                <div id="dot-p1b" class="phase-dot phase-dot-loading"></div>
+                <span class="text-sm font-medium text-slate-300">Metadaten-Analyse</span>
+                <span id="p1-badge" class="badge badge-muted ml-2">läuft…</span>
+                <span class="chevron">▼</span>
+              </summary>
+              <div class="phase-accordion-body space-y-3">
+                <div id="exif-matrix" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+                <div id="flags-container" class="space-y-1"></div>
+                <p class="text-xs text-slate-600 mt-3">💡 <strong class="text-slate-500">Was bedeutet das?</strong>
+                  Echte Kamerafotos enthalten technische Metadaten (EXIF). Fehlen diese komplett, wurde das Bild
+                  entweder über einen Messenger weitergeleitet oder digital erzeugt.</p>
+              </div>
+            </details>
+
+            <!-- Phase 2: ELA -->
+            <details class="phase-accordion" id="acc-phase2">
+              <summary>
+                <div id="dot-p2b" class="phase-dot phase-dot-loading"></div>
+                <span class="text-sm font-medium text-slate-300">Bildstruktur-Scanner (ELA)</span>
+                <span id="p2-badge" class="badge badge-muted ml-2">läuft…</span>
+                <span class="chevron">▼</span>
+              </summary>
+              <div class="phase-accordion-body space-y-3" id="phase2-result">
+                <div id="phase2-ela-block" class="hidden space-y-3">
+                  <p class="text-xs text-slate-500 uppercase tracking-widest">ELA Heatmap</p>
+                  <canvas id="ela-canvas-display"
+                    class="rounded-xl w-full max-h-52 object-contain bg-black/20"></canvas>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="exif-cell"><span class="exif-label">ELA Mittelwert</span><span id="ela-mean"
+                        class="exif-value"></span></div>
+                    <div class="exif-cell"><span class="exif-label">Standardabw.</span><span id="ela-stddev"
+                        class="exif-value"></span></div>
+                    <div class="exif-cell"><span class="exif-label">Deutung</span><span id="ela-interpretation"
+                        class="exif-value text-xs"></span></div>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div class="exif-cell"><span class="exif-label">Rauschen Ø</span><span id="noise-absmean"
+                      class="exif-value"></span></div>
+                  <div class="exif-cell"><span class="exif-label">Rauschen σ</span><span id="noise-stddev"
+                      class="exif-value"></span></div>
+                  <div class="exif-cell"><span class="exif-label">Rauschen</span><span id="noise-interpretation"
+                      class="exif-value text-xs"></span></div>
+                  <div class="exif-cell"><span class="exif-label">Farbentropie</span><span id="color-entropy"
+                      class="exif-value"></span></div>
+                  <div class="exif-cell col-span-2"><span class="exif-label">Farbe</span><span id="color-interpretation"
+                      class="exif-value text-xs"></span></div>
+                </div>
+                <p class="text-xs text-slate-600">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Die
+                  ELA-Analyse zeigt wo im Bild Bereiche unterschiedlich stark komprimiert wurden – ein typisches Zeichen
+                  nachträglicher Bildbearbeitung oder digitaler Montage.</p>
+              </div>
+            </details>
+
+            <!-- Phase 3: Frequenz -->
+            <details class="phase-accordion" id="acc-phase3">
+              <summary>
+                <div id="dot-p3b" class="phase-dot phase-dot-loading"></div>
+                <span class="text-sm font-medium text-slate-300">Frequenz- & GAN-Analyse</span>
+                <span id="p3-badge" class="badge badge-muted ml-2">läuft…</span>
+                <span class="chevron">▼</span>
+              </summary>
+              <div class="phase-accordion-body space-y-2" id="phase3-signals">
+                <p class="text-xs text-slate-600 mt-3">💡 <strong class="text-slate-500">Was bedeutet das?</strong>
+                  KI-generierte Bilder hinterlassen unsichtbare Muster in der Bildstruktur: künstlich gleichmäßige
+                  Texturen, untypische Farbverteilungen oder periodische Frequenzartefakte.</p>
+              </div>
+            </details>
+
+            <!-- Phase 5: OCR Textanalyse -->
+            <details class="phase-accordion" id="acc-phase5">
+              <summary>
+                <div id="dot-p5b" class="phase-dot phase-dot-loading"></div>
+                <span class="text-sm font-medium text-slate-300">Text-Analyse (OCR)</span>
+                <span id="p5-badge" class="badge badge-muted ml-2">läuft…</span>
+                <span class="chevron">▼</span>
+              </summary>
+              <div class="phase-accordion-body space-y-3">
+                <div id="ocr-loading" class="hidden flex items-center gap-3">
+                  <div class="spinner w-5 h-5"></div>
+                  <div>
+                    <p class="text-sm text-slate-300">Text wird erkannt…</p>
+                    <div class="score-bar mt-1 w-40">
+                      <div id="ocr-progress-fill" class="score-fill score-info" style="width:0%"></div>
+                    </div>
+                  </div>
+                </div>
+                <div id="ocr-result" class="hidden space-y-3">
+                  <div id="ocr-signals" class="space-y-1"></div>
+                  <details class="phase-accordion" style="margin-top:8px">
+                    <summary style="padding:10px 14px">
+                      <span class="text-xs text-slate-500">📄 Erkannter Text</span>
+                      <span class="chevron">▼</span>
+                    </summary>
+                    <div class="phase-accordion-body">
+                      <pre id="ocr-text"
+                        class="text-xs text-slate-400 whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-48 overflow-y-auto"></pre>
+                      <div class="flex gap-3 mt-2 text-xs text-slate-600">
+                        <span id="ocr-stats-words"></span>
+                        <span id="ocr-stats-confidence"></span>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+                <div id="ocr-no-text" class="hidden">
+                  <p class="text-slate-600 text-sm">📷 Kein lesbarer Text gefunden – vermutlich ein reines Foto ohne
+                    Textinhalt.</p>
+                </div>
+                <div id="ocr-skipped" class="hidden">
+                  <p class="text-slate-600 text-sm">ℹ️ Textanalyse übersprungen – kein Screenshot erkannt. Bei Bedarf
+                    wird sie trotzdem ausgeführt.</p>
+                </div>
+                <p class="text-xs text-slate-600 mt-2">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Die
+                  OCR-Texterkennung liest Text aus Screenshots (z.B. Facebook-Posts, WhatsApp-Nachrichten). Anschließend
+                  prüft das System auf typische Muster von Falschinformationen: Sensationssprache,
+                  Kettenpost-Aufforderungen, fehlende Quellen oder Gerüchte-Formulierungen.</p>
+              </div>
+            </details>
+
+            <!-- Phase 6: KI-Gesamtanalyse (SwinV2 + Ollama) -->
+            <details class="phase-accordion" id="acc-phase6" open>
+              <summary>
+                <div id="dot-p6b" class="phase-dot phase-dot-loading"></div>
+                <span class="text-sm font-medium text-slate-300">KI-Gesamtanalyse <span
+                    class="text-xs text-cyan-500 font-normal">(Server & Ollama)</span></span>
+                <span id="p6-badge" class="badge badge-muted ml-2">läuft…</span>
+                <span class="chevron">▼</span>
+              </summary>
+              <div class="phase-accordion-body space-y-4">
+
+                <!-- Phase 4: SwinV2 (innerhalb Phase 6) -->
+                <div class="space-y-2">
+                  <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">🤖 Generative KI (SwinV2)
+                  </p>
+
+                  <div id="phase4-result" class="hidden space-y-3 glass p-4 border border-slate-700/50 rounded-xl">
+                    <div class="score-bar">
+                      <div id="phase4-score-fill" class="score-fill" style="width:0%"></div>
+                    </div>
+                    <div class="flex justify-between text-xs text-slate-500">
+                      <span>KI-generiert</span>
+                      <span id="phase4-score-text" class="font-mono text-slate-300"></span>
+                      <span>📷 Kamerafoto</span>
+                    </div>
+                    <p id="phase4-method" class="text-xs text-slate-600"></p>
+                  </div>
+
+                  <div id="phase4-offline"
+                    class="hidden glass p-4 border border-amber-700/30 rounded-xl text-amber-500 text-sm">
+                    ⚠️ Serveranalyse (SwinV2) derzeit nicht erreichbar.
+                  </div>
+                </div>
+
+                <!-- Offline-State Ollama -->
+                <div id="llm-offline" class="hidden">
+                  <div class="glass p-4 border border-slate-700/50 rounded-xl text-sm text-slate-500">
+                    <p class="font-semibold text-slate-400 mb-1">⚠️ Ollama nicht installiert</p>
+                    <p class="text-xs mb-2">Für die KI-Tiefenanalyse muss Ollama lokal laufen. Einmalige Installation
+                      erforderlich.</p>
+                    <a href="https://ollama.com/download" target="_blank"
+                      class="text-violet-400 text-xs hover:underline">→ ollama.com/download</a>
+                  </div>
+                </div>
+
+                <!-- Modell fehlt Ollama -->
+                <div id="llm-model-missing" class="hidden">
+                  <div class="glass p-4 border border-amber-700/30 rounded-xl text-sm text-amber-400">
+                    <p class="font-semibold mb-1">📦 Modell noch nicht geladen</p>
+                    <p class="text-xs text-slate-400">Einmalig im Terminal ausführen:</p>
+                    <code
+                      class="block mt-1 text-xs bg-black/30 rounded p-2 text-cyan-300">ollama pull gemma3:4b<br>ollama pull llava:7b-v1.6-mistral-q4_K_M</code>
+                  </div>
+                </div>
+
+                <!-- Bild-Analyse Ergebnis -->
+                <div id="llm-image-result" class="hidden space-y-2 mt-4">
+                  <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">🖼️ Bildforensik (Vision-KI)
+                  </p>
+                  <div id="llm-image-flags" class="space-y-2"></div>
+                  <p id="llm-image-explanation" class="text-xs text-slate-400 leading-relaxed"></p>
+                </div>
+
+                <!-- Text-Analyse Ergebnis -->
+                <div id="llm-text-result" class="hidden space-y-2 mt-4">
+                  <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">📝 Inhalts-Check (Text-KI)
+                  </p>
+                  <div id="llm-text-flags" class="space-y-2"></div>
+                  <p id="llm-text-summary" class="text-xs text-slate-400 leading-relaxed"></p>
+                </div>
+
+                <!-- Fact-Check Ergebnis (Automatischer Scraper) -->
+                <div id="llm-factcheck-result"
+                  class="hidden space-y-2 mt-4 p-4 rounded-xl border border-rose-500/30 bg-rose-500/10">
+                  <p class="text-xs font-semibold text-rose-400 uppercase tracking-widest flex items-center gap-2">🌐
+                    AUTOMATISCHE WEB-RECHERCHE</p>
+                  <div id="llm-factcheck-links" class="space-y-3 mt-2"></div>
+                </div>
+
+                <!-- Kein Text erkannt -->
+                <div id="llm-no-text" class="hidden mt-2">
+                  <p class="text-xs text-slate-600">Kein Text für KI-Inhaltsanalyse im Bild gefunden.</p>
+                </div>
+
+                <p class="text-xs text-slate-600 mt-4">💡 <strong class="text-slate-500">Was macht die
+                    KI-Gesamtanalyse?</strong><br>
+                  Schritt 1 (SwinV2 Backend) untersucht auf Pixelebene, ob das Bild von einem KI-Generator (z.B. DALL-E)
+                  erstellt wurde.<br>
+                  Schritt 2 (Lokales LLM via Ollama) "versteht" danach als Kontext-Detektiv sowohl den Bild-Inhalt auf
+                  versteckte Montagen/Fehler, als auch gefundene Texte auf Hetze oder Falschinformationen.</p>
+              </div>
+            </details>
+
           </div>
         </div>
-      </div>
 
-      <!-- Analyse-Details (aufklappbar) -->
-      <div>
+
+        <!-- Aktionen -->
+        <div class="flex justify-center pt-2">
+          <button id="check-another-btn"
+            class="px-8 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold text-sm transition-all hover:shadow-lg hover:shadow-cyan-500/20 active:scale-95">
+            ← Weiteres Bild prüfen
+          </button>
+        </div>
+
+      </div><!-- /result-state -->
+
+      <!-- URL-ERGEBNIS STATE -->
+      <div id="url-result-state" class="hidden space-y-4">
+
+        <!-- Hero -->
+        <div id="url-result-hero" class="glass p-6 border-2 verdict-hero-info">
+          <div class="flex gap-4 items-start">
+            <img id="url-og-img" src="" alt=""
+              class="hidden w-20 h-20 object-cover rounded-xl flex-shrink-0 ring-1 ring-white/10">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs text-slate-600 mb-1" id="url-domain-label"></div>
+              <h2 id="url-title" class="text-white font-bold text-base leading-snug mb-2"></h2>
+              <p id="url-description" class="text-slate-400 text-sm mb-3 leading-relaxed"></p>
+              <span id="url-hero-verdict" class="badge badge-info">Analysiere…</span>
+            </div>
+          </div>
+          <p id="url-hero-summary" class="mt-4 text-slate-400 text-sm leading-relaxed"></p>
+        </div>
+
         <p class="text-xs text-slate-600 uppercase tracking-widest font-semibold mb-3 px-1">Analyse-Details</p>
         <div class="space-y-2">
 
-          <!-- Phase 1: Metadaten -->
-          <details class="phase-accordion" id="acc-phase1">
+          <!-- Quellen-Check -->
+          <details class="phase-accordion" id="url-acc-domain" open>
             <summary>
-              <div id="dot-p1b" class="phase-dot phase-dot-loading"></div>
-              <span class="text-sm font-medium text-slate-300">Metadaten-Analyse</span>
-              <span id="p1-badge" class="badge badge-muted ml-2">läuft…</span>
+              <div id="url-dot-domain" class="phase-dot phase-dot-loading"></div>
+              <span class="text-sm font-medium text-slate-300">Quellen-Check</span>
+              <span id="url-badge-domain" class="badge badge-muted ml-2">prüft…</span>
               <span class="chevron">▼</span>
             </summary>
-            <div class="phase-accordion-body space-y-3">
-              <div id="exif-matrix" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
-              <div id="flags-container" class="space-y-1"></div>
-              <p class="text-xs text-slate-600 mt-3">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Echte Kamerafotos enthalten technische Metadaten (EXIF). Fehlen diese komplett, wurde das Bild entweder über einen Messenger weitergeleitet oder digital erzeugt.</p>
+            <div class="phase-accordion-body space-y-2" id="url-domain-signals">
+              <p class="text-xs text-slate-600">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Wir prüfen
+                die Domain der URL gegen bekannte Fake-News-Seiten, URL-Verkürzer und verdächtige Domain-Muster.</p>
             </div>
           </details>
 
-          <!-- Phase 2: ELA -->
-          <details class="phase-accordion" id="acc-phase2">
+          <!-- Textanalyse -->
+          <details class="phase-accordion" id="url-acc-text">
             <summary>
-              <div id="dot-p2b" class="phase-dot phase-dot-loading"></div>
-              <span class="text-sm font-medium text-slate-300">Bildstruktur-Scanner (ELA)</span>
-              <span id="p2-badge" class="badge badge-muted ml-2">läuft…</span>
+              <div id="url-dot-text" class="phase-dot phase-dot-loading"></div>
+              <span class="text-sm font-medium text-slate-300">Text & Sprachanalyse</span>
+              <span id="url-badge-text" class="badge badge-muted ml-2">prüft…</span>
               <span class="chevron">▼</span>
             </summary>
-            <div class="phase-accordion-body space-y-3" id="phase2-result">
-              <div id="phase2-ela-block" class="hidden space-y-3">
-                <p class="text-xs text-slate-500 uppercase tracking-widest">ELA Heatmap</p>
-                <canvas id="ela-canvas-display" class="rounded-xl w-full max-h-52 object-contain bg-black/20"></canvas>
-                <div class="grid grid-cols-3 gap-2">
-                  <div class="exif-cell"><span class="exif-label">ELA Mittelwert</span><span id="ela-mean" class="exif-value"></span></div>
-                  <div class="exif-cell"><span class="exif-label">Standardabw.</span><span id="ela-stddev" class="exif-value"></span></div>
-                  <div class="exif-cell"><span class="exif-label">Deutung</span><span id="ela-interpretation" class="exif-value text-xs"></span></div>
+            <div class="phase-accordion-body space-y-2">
+              <div id="url-text-signals"></div>
+              <details class="phase-accordion" style="margin-top:8px">
+                <summary style="padding:10px 14px">
+                  <span class="text-xs text-slate-500">📄 Extrahierter Seitentext</span>
+                  <span class="chevron">▼</span>
+                </summary>
+                <div class="phase-accordion-body">
+                  <pre id="url-extracted-text"
+                    class="text-xs text-slate-400 whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-52 overflow-y-auto"></pre>
                 </div>
-              </div>
-              <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                <div class="exif-cell"><span class="exif-label">Rauschen Ø</span><span id="noise-absmean" class="exif-value"></span></div>
-                <div class="exif-cell"><span class="exif-label">Rauschen σ</span><span id="noise-stddev" class="exif-value"></span></div>
-                <div class="exif-cell"><span class="exif-label">Rauschen</span><span id="noise-interpretation" class="exif-value text-xs"></span></div>
-                <div class="exif-cell"><span class="exif-label">Farbentropie</span><span id="color-entropy" class="exif-value"></span></div>
-                <div class="exif-cell col-span-2"><span class="exif-label">Farbe</span><span id="color-interpretation" class="exif-value text-xs"></span></div>
-              </div>
-              <p class="text-xs text-slate-600">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Die ELA-Analyse zeigt wo im Bild Bereiche unterschiedlich stark komprimiert wurden – ein typisches Zeichen nachträglicher Bildbearbeitung oder digitaler Montage.</p>
-            </div>
-          </details>
-
-          <!-- Phase 3: Frequenz -->
-          <details class="phase-accordion" id="acc-phase3">
-            <summary>
-              <div id="dot-p3b" class="phase-dot phase-dot-loading"></div>
-              <span class="text-sm font-medium text-slate-300">Frequenz- & GAN-Analyse</span>
-              <span id="p3-badge" class="badge badge-muted ml-2">läuft…</span>
-              <span class="chevron">▼</span>
-            </summary>
-            <div class="phase-accordion-body space-y-2" id="phase3-signals">
-              <p class="text-xs text-slate-600 mt-3">💡 <strong class="text-slate-500">Was bedeutet das?</strong> KI-generierte Bilder hinterlassen unsichtbare Muster in der Bildstruktur: künstlich gleichmäßige Texturen, untypische Farbverteilungen oder periodische Frequenzartefakte.</p>
-            </div>
-          </details>
-
-          <!-- Phase 5: OCR Textanalyse -->
-          <details class="phase-accordion" id="acc-phase5">
-            <summary>
-              <div id="dot-p5b" class="phase-dot phase-dot-loading"></div>
-              <span class="text-sm font-medium text-slate-300">Text-Analyse (OCR)</span>
-              <span id="p5-badge" class="badge badge-muted ml-2">läuft…</span>
-              <span class="chevron">▼</span>
-            </summary>
-            <div class="phase-accordion-body space-y-3">
-              <div id="ocr-loading" class="hidden flex items-center gap-3">
-                <div class="spinner w-5 h-5"></div>
-                <div>
-                  <p class="text-sm text-slate-300">Text wird erkannt…</p>
-                  <div class="score-bar mt-1 w-40"><div id="ocr-progress-fill" class="score-fill score-info" style="width:0%"></div></div>
-                </div>
-              </div>
-              <div id="ocr-result" class="hidden space-y-3">
-                <div id="ocr-signals" class="space-y-1"></div>
-                <details class="phase-accordion" style="margin-top:8px">
-                  <summary style="padding:10px 14px">
-                    <span class="text-xs text-slate-500">📄 Erkannter Text</span>
-                    <span class="chevron">▼</span>
-                  </summary>
-                  <div class="phase-accordion-body">
-                    <pre id="ocr-text" class="text-xs text-slate-400 whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-48 overflow-y-auto"></pre>
-                    <div class="flex gap-3 mt-2 text-xs text-slate-600">
-                      <span id="ocr-stats-words"></span>
-                      <span id="ocr-stats-confidence"></span>
-                    </div>
-                  </div>
-                </details>
-              </div>
-              <div id="ocr-no-text" class="hidden">
-                <p class="text-slate-600 text-sm">📷 Kein lesbarer Text gefunden – vermutlich ein reines Foto ohne Textinhalt.</p>
-              </div>
-              <div id="ocr-skipped" class="hidden">
-                <p class="text-slate-600 text-sm">ℹ️ Textanalyse übersprungen – kein Screenshot erkannt. Bei Bedarf wird sie trotzdem ausgeführt.</p>
-              </div>
-              <p class="text-xs text-slate-600 mt-2">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Die OCR-Texterkennung liest Text aus Screenshots (z.B. Facebook-Posts, WhatsApp-Nachrichten). Anschließend prüft das System auf typische Muster von Falschinformationen: Sensationssprache, Kettenpost-Aufforderungen, fehlende Quellen oder Gerüchte-Formulierungen.</p>
-            </div>
-          </details>
-
-          <!-- Phase 6: KI-Gesamtanalyse (SwinV2 + Ollama) -->
-          <details class="phase-accordion" id="acc-phase6" open>
-            <summary>
-              <div id="dot-p6b" class="phase-dot phase-dot-loading"></div>
-              <span class="text-sm font-medium text-slate-300">KI-Gesamtanalyse <span class="text-xs text-cyan-500 font-normal">(Server & Ollama)</span></span>
-              <span id="p6-badge" class="badge badge-muted ml-2">läuft…</span>
-              <span class="chevron">▼</span>
-            </summary>
-            <div class="phase-accordion-body space-y-4">
-
-              <!-- Phase 4: SwinV2 (innerhalb Phase 6) -->
-              <div class="space-y-2">
-                  <p id="phase4-method" class="text-xs text-slate-600"></p>
-                </div>
-                
-                <div id="phase4-offline" class="hidden glass p-4 border border-amber-700/30 rounded-xl text-amber-500 text-sm">
-                  ⚠️ Serveranalyse (SwinV2) derzeit nicht erreichbar.
-                </div>
-              </div>
-
-              <!-- Offline-State Ollama -->
-              <div id="llm-offline" class="hidden">
-                <div class="glass p-4 border border-slate-700/50 rounded-xl text-sm text-slate-500">
-                  <p class="font-semibold text-slate-400 mb-1">⚠️ Ollama nicht installiert</p>
-                  <p class="text-xs mb-2">Für die KI-Tiefenanalyse muss Ollama lokal laufen. Einmalige Installation erforderlich.</p>
-                  <a href="https://ollama.com/download" target="_blank" class="text-violet-400 text-xs hover:underline">→ ollama.com/download</a>
-                </div>
-              </div>
-
-              <!-- Modell fehlt Ollama -->
-              <div id="llm-model-missing" class="hidden">
-                <div class="glass p-4 border border-amber-700/30 rounded-xl text-sm text-amber-400">
-                  <p class="font-semibold mb-1">📦 Modell noch nicht geladen</p>
-                  <p class="text-xs text-slate-400">Einmalig im Terminal ausführen:</p>
-                  <code class="block mt-1 text-xs bg-black/30 rounded p-2 text-cyan-300">ollama pull gemma3:4b<br>ollama pull llava:7b-v1.6-mistral-q4_K_M</code>
-                </div>
-              </div>
-
-              <!-- Bild-Analyse Ergebnis -->
-              <div id="llm-image-result" class="hidden space-y-2 mt-4">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">🖼️ Bildforensik (Vision-KI)</p>
-                <div id="llm-image-flags" class="space-y-2"></div>
-                <p id="llm-image-explanation" class="text-xs text-slate-400 leading-relaxed"></p>
-              </div>
-
-              <!-- Text-Analyse Ergebnis -->
-              <div id="llm-text-result" class="hidden space-y-2 mt-4">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">📝 Inhalts-Check (Text-KI)</p>
-                <div id="llm-text-flags" class="space-y-2"></div>
-                <p id="llm-text-summary" class="text-xs text-slate-400 leading-relaxed"></p>
-              </div>
-
-              <!-- Fact-Check Ergebnis (Automatischer Scraper) -->
-              <div id="llm-factcheck-result" class="hidden space-y-2 mt-4 p-4 rounded-xl border border-rose-500/30 bg-rose-500/10">
-                <p class="text-xs font-semibold text-rose-400 uppercase tracking-widest flex items-center gap-2">🌐 AUTOMATISCHE WEB-RECHERCHE</p>
-                <div id="llm-factcheck-links" class="space-y-3 mt-2"></div>
-              </div>
-
-              <!-- Kein Text erkannt -->
-              <div id="llm-no-text" class="hidden mt-2">
-                <p class="text-xs text-slate-600">Kein Text für KI-Inhaltsanalyse im Bild gefunden.</p>
-              </div>
-
-              <p class="text-xs text-slate-600 mt-4">💡 <strong class="text-slate-500">Was macht die KI-Gesamtanalyse?</strong><br>
-              Schritt 1 (SwinV2 Backend) untersucht auf Pixelebene, ob das Bild von einem KI-Generator (z.B. DALL-E) erstellt wurde.<br>
-              Schritt 2 (Lokales LLM via Ollama) "versteht" danach als Kontext-Detektiv sowohl den Bild-Inhalt auf versteckte Montagen/Fehler, als auch gefundene Texte auf Hetze oder Falschinformationen.</p>
+              </details>
+              <p class="text-xs text-slate-600 mt-2">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Der
+                Seitentext wurde extrahiert und auf Fake-News-Muster, Sensationssprache, Kettenpost-Phrasen und
+                Hasskommunikation geprüft.</p>
             </div>
           </details>
 
         </div>
-      </div>
 
-
-      <!-- Aktionen -->
-      <div class="flex justify-center pt-2">
-        <button id="check-another-btn" class="px-8 py-3 rounded-2xl bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold text-sm transition-all hover:shadow-lg hover:shadow-cyan-500/20 active:scale-95">
-          ← Weiteres Bild prüfen
-        </button>
-      </div>
-
-    </div><!-- /result-state -->
-
-    <!-- URL-ERGEBNIS STATE -->
-    <div id="url-result-state" class="hidden space-y-4">
-
-      <!-- Hero -->
-      <div id="url-result-hero" class="glass p-6 border-2 verdict-hero-info">
-        <div class="flex gap-4 items-start">
-          <img id="url-og-img" src="" alt="" class="hidden w-20 h-20 object-cover rounded-xl flex-shrink-0 ring-1 ring-white/10">
-          <div class="flex-1 min-w-0">
-            <div class="text-xs text-slate-600 mb-1" id="url-domain-label"></div>
-            <h2 id="url-title" class="text-white font-bold text-base leading-snug mb-2"></h2>
-            <p id="url-description" class="text-slate-400 text-sm mb-3 leading-relaxed"></p>
-            <span id="url-hero-verdict" class="badge badge-info">Analysiere…</span>
-          </div>
+        <div class="flex justify-center pt-2">
+          <button id="url-check-another-btn"
+            class="px-8 py-3 rounded-2xl bg-violet-500 hover:bg-violet-400 text-white font-bold text-sm transition-all hover:shadow-lg active:scale-95">
+            ← Weiteren Link prüfen
+          </button>
         </div>
-        <p id="url-hero-summary" class="mt-4 text-slate-400 text-sm leading-relaxed"></p>
-      </div>
 
-      <p class="text-xs text-slate-600 uppercase tracking-widest font-semibold mb-3 px-1">Analyse-Details</p>
-      <div class="space-y-2">
+      </div><!-- /url-result-state -->
 
-        <!-- Quellen-Check -->
-        <details class="phase-accordion" id="url-acc-domain" open>
-          <summary>
-            <div id="url-dot-domain" class="phase-dot phase-dot-loading"></div>
-            <span class="text-sm font-medium text-slate-300">Quellen-Check</span>
-            <span id="url-badge-domain" class="badge badge-muted ml-2">prüft…</span>
-            <span class="chevron">▼</span>
-          </summary>
-          <div class="phase-accordion-body space-y-2" id="url-domain-signals">
-            <p class="text-xs text-slate-600">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Wir prüfen die Domain der URL gegen bekannte Fake-News-Seiten, URL-Verkürzer und verdächtige Domain-Muster.</p>
-          </div>
-        </details>
+    </main>
 
-        <!-- Textanalyse -->
-        <details class="phase-accordion" id="url-acc-text">
-          <summary>
-            <div id="url-dot-text" class="phase-dot phase-dot-loading"></div>
-            <span class="text-sm font-medium text-slate-300">Text & Sprachanalyse</span>
-            <span id="url-badge-text" class="badge badge-muted ml-2">prüft…</span>
-            <span class="chevron">▼</span>
-          </summary>
-          <div class="phase-accordion-body space-y-2">
-            <div id="url-text-signals"></div>
-            <details class="phase-accordion" style="margin-top:8px">
-              <summary style="padding:10px 14px">
-                <span class="text-xs text-slate-500">📄 Extrahierter Seitentext</span>
-                <span class="chevron">▼</span>
-              </summary>
-              <div class="phase-accordion-body">
-                <pre id="url-extracted-text" class="text-xs text-slate-400 whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-52 overflow-y-auto"></pre>
-              </div>
-            </details>
-            <p class="text-xs text-slate-600 mt-2">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Der Seitentext wurde extrahiert und auf Fake-News-Muster, Sensationssprache, Kettenpost-Phrasen und Hasskommunikation geprüft.</p>
-          </div>
-        </details>
+    <footer class="border-t border-white/5 py-6 text-center text-xs text-slate-700 mt-6">
+      <a href="https://echt-check.de" class="hover:text-cyan-400 transition-colors">echt-check.de</a> ·
+      Zero-Trace · Keine Cookies · Keine Tracker
+    </footer>
 
-      </div>
+  </div>
 
-      <div class="flex justify-center pt-2">
-        <button id="url-check-another-btn" class="px-8 py-3 rounded-2xl bg-violet-500 hover:bg-violet-400 text-white font-bold text-sm transition-all hover:shadow-lg active:scale-95">
-          ← Weiteren Link prüfen
-        </button>
-      </div>
-
-    </div><!-- /url-result-state -->
-
-  </main>
-
-  <footer class="border-t border-white/5 py-6 text-center text-xs text-slate-700 mt-6">
-    <a href="https://echt-check.de" class="hover:text-cyan-400 transition-colors">echt-check.de</a> ·
-    Zero-Trace · Keine Cookies · Keine Tracker
-  </footer>
-
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"></script>
-<script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
-<script src="engine.js"></script>
-<script src="scanner.js"></script>
-<script src="ai-detector.js"></script>
-<script src="ocr.js"></script>
-<script src="url-checker.js"></script>
-<script src="api-client.js"></script>
-<script src="ui.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"></script>
+  <script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
+  <script src="engine.js"></script>
+  <script src="scanner.js"></script>
+  <script src="ai-detector.js"></script>
+  <script src="ocr.js"></script>
+  <script src="url-checker.js"></script>
+  <script src="api-client.js"></script>
+  <script src="ui.js"></script>
 </body>
+
 </html>
