@@ -185,10 +185,14 @@ const EchtCheckUI = (() => {
             p6scores.push(imgScore);
           }
           if (txtData) {
-            p6scores.push(txtData.score ?? 50);
+            // Text-LLM gibt oft einen 'Suspicion Score' (100 = Hetze/Fake). Wir brauchen einen Authentizitäts-Score (100 = Gut).
+            let txtScore = 100 - (txtData.score ?? 50);
+            if (txtData.suspicious) txtScore = Math.min(txtScore, 40);
+            p6scores.push(txtScore);
           }
           if (p6scores.length) {
-            phaseScores.p6 = Math.round(p6scores.reduce((a,b)=>a+b,0)/p6scores.length);
+            // Konservativste Metrik verwenden (niedrigster Wert entscheidet über Phase 6)
+            phaseScores.p6 = Math.min(...p6scores);
           }
 
           const p6lvl = (phaseScores.p6 ?? 50) >= 65 ? 'safe'

@@ -265,7 +265,7 @@ Prüfe auf:
 6. Maßstabs- oder Proportionsfehler
 
 Antworte NUR mit gültigem JSON ohne Markdown oder Codeblöcke:
-{"manipulated":true/false,"confidence":0-100,"verdict":"Authentisch oder Manipuliert","flags":["Fehler 1 (kurz)", "Fehler 2 (kurz)"],"explanation":"1-2 Sätze auf Deutsch was du erkannt hast"}
+{"manipulated":true/false,"confidence":0-100,"verdict":"Authentisch oder Manipuliert","flags":[],"explanation":"1-2 Sätze auf Deutsch was du erkannt hast"}
 WICHTIG: Das Array 'flags' darf nur die tatsächlichen, im Bild gefundenen Fehler enthalten. Wenn keine Fehler da sind, antworte "flags":[]`;
 
       const r = await axios.post(`${OLLAMA_BASE}/api/generate`, {
