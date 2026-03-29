@@ -216,10 +216,11 @@ app.get('/llm/status', async (req, res) => {
   } catch(e) { res.json({ online: false, error: e.message }); }
 });
 
-// ─── Heimsucher-Modul (DuckDuckGo Scraper für Faktencheck-Seiten) ───
+// ─── Heimsucher-Modul (DuckDuckGo Scraper für freie Web-Recherche) ───
 async function searchFactChecks(query) {
   if (!query || query.length < 5) return [];
-  const searchStr = `site:mimikama.org OR site:correctiv.org OR site:dpa-factchecking.com ${query}`;
+  // Wir suchen jetzt im gesamten Internet, hängen aber "faktencheck OR fake" als Booster dran, um Müll herauszufiltern
+  const searchStr = `${query} (faktencheck OR fake OR widerlegt OR hoax)`;
   const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchStr)}`;
   
   try {
@@ -269,7 +270,7 @@ Prüfe auf:
 Text: """${text.slice(0, 3000)}"""
 
 Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
-{"suspicious":true/false,"score":0-100,"verdict":"Unauffällig oder Textmuster auffällig oder Manipulation erkannt oder Hetze erkannt","flags":[{"type":"hate/fake/manipulation/disinfo","text":"kurze Erklärung auf Deutsch","severity":"low/medium/high"}],"summary":"1-2 Sätze Zusammenfassung auf Deutsch","searchQuery":"3-5 markante Suchbegriffe aus dem Text (ohne Füllwörter) für einen Google Fact-Check"}`;
+{"suspicious":true/false,"score":0-100,"verdict":"Unauffällig oder Textmuster auffällig oder Manipulation erkannt oder Hetze erkannt","flags":[{"type":"hate/fake/manipulation/disinfo","text":"kurze Erklärung auf Deutsch","severity":"low/medium/high"}],"summary":"1-2 Sätze Zusammenfassung auf Deutsch","searchQuery":"Ein kurzer, flüssiger Suchsatz (4-8 Wörter), der die zentrale, gefährlichste Behauptung des Textes für eine Google-Suche zusammenfasst. GANZ WICHTIG: KEINE Aufzählung mit Kommas, sondern wie ein Mensch tippt!"}`;
 
       const r = await axios.post(`${OLLAMA_BASE}/api/generate`, {
         model: LLM_TEXT_MODEL, prompt, stream: false, format: 'json',
