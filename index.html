@@ -81,6 +81,35 @@
   .verdict-number-warning{color:#f59e0b}
   .verdict-number-danger{color:#ef4444}
   .verdict-number-info{color:#6366f1}
+
+  /* ─── Mobile Responsive ────────────────────────────────────────── */
+  @media (max-width:480px){
+    /* Hero score: klein genug dass Verdict-Text nicht abgeschnitten wird */
+    .verdict-number{font-size:52px;letter-spacing:-2px}
+    /* Bild-Vorschau kleiner */
+    #image-preview{width:72px!important;height:72px!important;border-radius:12px}
+    /* Hero flex: bild oben, dann score+text */
+    #result-hero > div:first-child{flex-direction:column;align-items:flex-start;gap:12px}
+    /* Verdict-Text soll umbrechen, nicht overflow */
+    #hero-verdict{font-size:16px!important}
+    /* H1 kleiner */
+    h1.text-5xl{font-size:1.875rem!important;line-height:1.2}
+    /* Header-Badge umbrechend */
+    header .badge{font-size:10px;padding:3px 8px;max-width:160px;text-align:center;line-height:1.3}
+    /* Drop-zone padding reduzieren */
+    #drop-zone{padding:2rem 1rem!important}
+    /* Meta-info umbrechen */
+    #result-hero .flex.gap-3{flex-wrap:wrap;gap:8px}
+    /* Phase-punkte kompakter */
+    #result-hero .flex.gap-3 > div{gap:4px}
+    /* URL-Input stack */
+    #tab-panel-url .flex.gap-3{flex-direction:column}
+    #url-submit-btn{width:100%}
+  }
+  @media (max-width:360px){
+    .verdict-number{font-size:44px}
+    #image-preview{width:60px!important;height:60px!important}
+  }
 </style>
 </head>
 <body>
@@ -114,7 +143,7 @@
           <div class="inline-block bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
             🔎 Metadaten · ELA · Frequenzanalyse · OCR-Text · KI-Modell (GPU)
           </div>
-          <h1 class="text-5xl font-extrabold text-white mb-4">Ist das Bild oder die Meldung <span class="text-cyan-400">echt</span>?</h1>
+          <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Ist das Bild oder die Meldung <span class="text-cyan-400">echt</span>?</h1>
           <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
             Lade ein Bild oder Screenshot (z.B. Facebook-Post) hoch oder füge es mit <kbd class="bg-white/10 px-1.5 py-0.5 rounded text-xs">Strg+V</kbd> ein.
           </p>
@@ -136,7 +165,7 @@
           <div class="inline-block bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
             🔗 Domain-Check · Text-Extraktion · Fake-News-Analyse · Hetze-Erkennung
           </div>
-          <h1 class="text-5xl font-extrabold text-white mb-4">Link oder Artikel <span class="text-violet-400">prüfen</span></h1>
+          <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Link oder Artikel <span class="text-violet-400">prüfen</span></h1>
           <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
             Füge die URL eines Artikels, Posts oder Links ein. Das System analysiert Inhalt und Quelle automatisch.
           </p>
@@ -185,38 +214,54 @@
     <!-- RESULT STATE -->
     <div id="result-state" class="hidden space-y-4">
 
-      <!-- ★ HERO: Sofortiges Ergebnis ★ -->
-      <div id="result-hero" class="glass p-6 verdict-hero-info border-2">
-        <div class="flex gap-5 items-center">
-          <!-- Bild-Vorschau -->
-          <img id="image-preview" src="" alt="Vorschau" class="w-28 h-28 object-cover rounded-2xl flex-shrink-0 ring-2 ring-white/10">
-          <!-- Hauptergebnis -->
-          <div class="flex-1 min-w-0">
-            <div class="flex items-baseline gap-3 mb-1">
-              <span id="hero-score" class="verdict-number verdict-number-info">–</span>
-              <div>
-                <div class="text-slate-400 text-xs font-medium uppercase tracking-widest">Echtheit</div>
-                <div id="hero-verdict" class="text-white font-bold text-xl leading-tight">Wird analysiert…</div>
-              </div>
+      <!-- ★ HERO: Ergebnis-Karte ★ -->
+      <div id="result-hero" class="glass p-5 verdict-hero-info border-2">
+        <!-- Analyse läuft: Kompakter Fortschritts-Banner -->
+        <div id="hero-analyzing-banner" class="flex items-center gap-4 mb-4">
+          <div class="spinner w-6 h-6 flex-shrink-0"></div>
+          <div class="flex-1">
+            <p class="text-sm text-white font-semibold">Analyse läuft…</p>
+            <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p1" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Metadaten</span>
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p2" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Struktur</span>
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p3" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Frequenz</span>
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p5" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>OCR</span>
+              <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p4" class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>KI-Modell</span>
             </div>
-            <div class="score-bar my-3">
-              <div id="hero-score-fill" class="score-fill score-info" style="width:0%"></div>
-            </div>
-            <p id="hero-summary" class="text-slate-400 text-sm leading-relaxed">Die Analyse läuft. Das Ergebnis erscheint hier in wenigen Sekunden.</p>
           </div>
+          <img id="image-preview" src="" alt="Vorschau" class="w-16 h-16 object-cover rounded-xl flex-shrink-0 ring-2 ring-white/10">
         </div>
-        <!-- Phase-Status-Punkte -->
-        <div class="flex gap-3 mt-5 flex-wrap">
-          <div class="flex items-center gap-2"><div id="dot-p1" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-500">Metadaten</span></div>
-          <div class="text-slate-700">·</div>
-          <div class="flex items-center gap-2"><div id="dot-p2" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-500">Bildstruktur</span></div>
-          <div class="text-slate-700">·</div>
-          <div class="flex items-center gap-2"><div id="dot-p3" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-500">Frequenz</span></div>
-          <div class="text-slate-700">·</div>
-          <div class="flex items-center gap-2"><div id="dot-p5" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-500">Text-OCR</span></div>
-          <div class="text-slate-700">·</div>
-          <div class="flex items-center gap-2"><div id="dot-p4" class="phase-dot phase-dot-loading"></div><span class="text-xs text-slate-500">KI-Modell</span></div>
-          <span id="meta-info" class="ml-auto text-xs text-slate-600"></span>
+        <!-- Ergebnis (erst sichtbar wenn fertig) -->
+        <div id="hero-result-block" class="hidden">
+          <div class="flex gap-4 items-start">
+            <img id="image-preview-result" src="" alt="Vorschau" class="w-20 h-20 object-cover rounded-2xl flex-shrink-0 ring-2 ring-white/10">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-baseline gap-2 mb-1 flex-wrap">
+                <span id="hero-score" class="verdict-number verdict-number-info">–</span>
+                <div>
+                  <div class="text-slate-400 text-xs font-medium uppercase tracking-widest">Echtheit</div>
+                  <div id="hero-verdict" class="text-white font-bold leading-tight" style="font-size:clamp(1rem,4vw,1.25rem)">Wird analysiert…</div>
+                </div>
+              </div>
+              <div class="score-bar my-3">
+                <div id="hero-score-fill" class="score-fill score-info" style="width:0%"></div>
+              </div>
+              <p id="hero-summary" class="text-slate-400 text-sm leading-relaxed">Die Analyse läuft.</p>
+            </div>
+          </div>
+          <!-- Phase-Status (kompakt, nach Ergebnis) -->
+          <div class="flex gap-x-3 gap-y-1 mt-4 flex-wrap items-center">
+            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p1b" class="phase-dot" style="width:7px;height:7px"></span>Metadaten</span>
+            <span class="text-slate-700 text-xs">·</span>
+            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p2b" class="phase-dot" style="width:7px;height:7px"></span>Struktur</span>
+            <span class="text-slate-700 text-xs">·</span>
+            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p3b" class="phase-dot" style="width:7px;height:7px"></span>Frequenz</span>
+            <span class="text-slate-700 text-xs">·</span>
+            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p5b" class="phase-dot" style="width:7px;height:7px"></span>OCR</span>
+            <span class="text-slate-700 text-xs">·</span>
+            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p4b" class="phase-dot" style="width:7px;height:7px"></span>KI-Modell</span>
+            <span id="meta-info" class="ml-auto text-xs text-slate-600"></span>
+          </div>
         </div>
       </div>
 

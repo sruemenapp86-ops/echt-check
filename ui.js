@@ -1,6 +1,7 @@
 const EchtCheckUI = (() => {
   let currentObjectUrl = null;
   let phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
+  let _analysisComplete = false;
 
   // ─── Verdict-Texte ─────────────────────────────────────────────────────────
   const VERDICT_TEXT = {
@@ -53,7 +54,8 @@ const EchtCheckUI = (() => {
 
   // ─── Analyse-Flow ──────────────────────────────────────────────────────────
   async function _handleFile(file) {
-    phaseScores = { p1: null, p2: null, p3: null, p4: null };
+    phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
+    _analysisComplete = false;
     _showLoading(file);
 
     try {
@@ -61,42 +63,42 @@ const EchtCheckUI = (() => {
       const result = await EchtCheckEngine.analyzeFile(file);
       _showInitialResult(result, file);
       phaseScores.p1 = result.score;
-      _setDot(['dot-p1','dot-p1b'], result.verdict.level);
+      _setDot(['dot-p1'], result.verdict.level);
       _setBadge('p1-badge', result.verdict.level, result.verdict.label);
       _updateHero();
 
       // Phase 2
-      _setDot(['dot-p2','dot-p2b'], 'loading');
+      _setDot(['dot-p2'], 'loading');
       try {
         const s = await EchtCheckScanner.scan(file);
         _showPhase2Results(s);
         phaseScores.p2 = s.combinedScore;
-        _setDot(['dot-p2','dot-p2b'], s.verdict.level);
+        _setDot(['dot-p2'], s.verdict.level);
         _setBadge('p2-badge', s.verdict.level, s.verdict.label);
       } catch(e) {
         console.warn('Phase2:', e);
-        _setDot(['dot-p2','dot-p2b'], 'warning');
+        _setDot(['dot-p2'], 'warning');
         _setBadge('p2-badge', 'warning', 'Fehler');
       }
       _updateHero();
 
       // Phase 3
-      _setDot(['dot-p3','dot-p3b'], 'loading');
+      _setDot(['dot-p3'], 'loading');
       try {
         const a = await EchtCheckAIDetector.detect(file);
         _showPhase3Results(a);
         phaseScores.p3 = a.score;
-        _setDot(['dot-p3','dot-p3b'], a.verdict.level);
+        _setDot(['dot-p3'], a.verdict.level);
         _setBadge('p3-badge', a.verdict.level, a.verdict.label);
       } catch(e) {
         console.warn('Phase3:', e);
-        _setDot(['dot-p3','dot-p3b'], 'warning');
+        _setDot(['dot-p3'], 'warning');
         _setBadge('p3-badge', 'warning', 'Fehler');
       }
       _updateHero();
 
       // Phase 5: OCR Textanalyse
-      _setDot(['dot-p5','dot-p5b'], 'loading');
+      _setDot(['dot-p5'], 'loading');
       document.getElementById('ocr-loading').classList.remove('hidden');
       if (EchtCheckOCR.looksLikeScreenshot(file.type, !!result.exif?.make)) {
         document.getElementById('acc-phase5').open = true;
@@ -109,60 +111,78 @@ const EchtCheckUI = (() => {
         _showPhase5Results(ocr);
         phaseScores.p5 = ocr.valid ? ocr.score : null;
         const lvl5 = !ocr.valid ? 'info' : ocr.level;
-        _setDot(['dot-p5','dot-p5b'], lvl5);
+        _setDot(['dot-p5'], lvl5);
         _setBadge('p5-badge', lvl5, !ocr.valid ? 'Kein Text' : ocr.verdict);
       } catch(e) {
-        console.warn('OCR:', e);
+        console.warn('OCR:', e.message);
         document.getElementById('ocr-loading').classList.add('hidden');
         document.getElementById('ocr-skipped').classList.remove('hidden');
-        _setDot(['dot-p5','dot-p5b'], 'info');
-        _setBadge('p5-badge', 'info', 'Fehler');
+        _setDot(['dot-p5'], 'info');
+        _setBadge('p5-badge', 'info', e.message.includes('Timeout') ? 'Timeout' : 'Fehler');
       }
       _updateHero();
 
-      // Phase 4 (Backend KI)
-      _setDot(['dot-p4','dot-p4b'], 'loading');
+      // Phase 4 (Backend KI) – LETZTE PHASE
+      _setDot(['dot-p4'], 'loading');
       try {
         const r = await EchtCheckAPI.analyzeImage(file);
         if (r) {
           _showPhase4Results(r);
           phaseScores.p4 = r.score ?? 50;
           const lvl = (r.score ?? 50) >= 65 ? 'safe' : (r.score ?? 50) >= 40 ? 'warning' : 'danger';
-          _setDot(['dot-p4','dot-p4b'], lvl);
+          _setDot(['dot-p4'], lvl);
           _setBadge('p4-badge', lvl, lvl === 'safe' ? 'Wahrscheinlich echt' : lvl === 'danger' ? 'Wahrscheinlich KI' : 'Nicht eindeutig');
         } else {
           document.getElementById('phase4-offline').classList.remove('hidden');
-          _setDot(['dot-p4','dot-p4b'], 'warning');
+          _setDot(['dot-p4'], 'warning');
           _setBadge('p4-badge', 'warning', 'Nicht erreichbar');
         }
       } catch(e) {
         document.getElementById('phase4-offline').classList.remove('hidden');
-        _setDot(['dot-p4','dot-p4b'], 'warning');
+        _setDot(['dot-p4'], 'warning');
         _setBadge('p4-badge', 'warning', 'Offline');
       }
-      _updateHero();
+      // Alle Phasen fertig – jetzt erst das Endergebnis anzeigen
+      _finalizeHero();
 
     } catch(err) { _showError(err.message); }
   }
 
-  // ─── Hero-Update (wird nach jeder Phase aufgerufen) ─────────────────────────
+  // ─── _updateHero: Dots im Analyse-Banner, KEIN Score-Update (nur intern) ──────────────
   function _updateHero() {
+    // Nichts weiter – Score wird erst in _finalizeHero() gesetzt.
+    // Diese Funktion bleibt für zukünftige Zwecke.
+  }
+
+  // ─── Alle Phasen fertig: Banner -> Ergebnis ───────────────────────────────
+  function _finalizeHero() {
+    _analysisComplete = true;
     const scores = Object.values(phaseScores).filter(v => v !== null);
     if (!scores.length) return;
 
-    // Gewichtung: Phase 4 (KI-Modell) zählt doppelt wenn vorhanden
+    // Phase 4 doppelt gewichten
     let weighted = [...scores];
-    if (phaseScores.p4 !== null) weighted.push(phaseScores.p4); // Extra-Gewicht
+    if (phaseScores.p4 !== null) weighted.push(phaseScores.p4);
     const avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
-
     const level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
     const vt = VERDICT_TEXT[level];
 
-    // Hero-Card styling
+    // Hero-Card styling updaten
     const hero = document.getElementById('result-hero');
-    hero.className = `glass p-6 border-2 verdict-hero-${level}`;
+    hero.className = `glass p-5 border-2 verdict-hero-${level}`;
 
-    // Score number
+    // Banner ausblenden, Ergebnis-Block einblenden
+    document.getElementById('hero-analyzing-banner').classList.add('hidden');
+    const block = document.getElementById('hero-result-block');
+    block.classList.remove('hidden');
+
+    // Zweites Bild-Preview befüllen
+    const imgResult = document.getElementById('image-preview-result');
+    const imgOrig   = document.getElementById('image-preview');
+    imgResult.src = imgOrig.src;
+    imgResult.alt = imgOrig.alt;
+
+    // Score-Zahl
     const numEl = document.getElementById('hero-score');
     numEl.textContent = avg;
     numEl.className = `verdict-number ${vt.num}`;
@@ -204,22 +224,15 @@ const EchtCheckUI = (() => {
 
     document.getElementById('meta-info').textContent = `${result.fileName} · ${_fmtBytes(result.fileSize)} · ${result.fileType}`;
 
-    // Initial hero (info state, wird durch _updateHero() überschrieben)
-    document.getElementById('hero-score').textContent = result.score;
-    document.getElementById('hero-score').className = `verdict-number verdict-number-${result.verdict.level}`;
-    document.getElementById('hero-verdict').textContent = VERDICT_TEXT[result.verdict.level]?.label ?? result.verdict.label;
-    document.getElementById('hero-summary').textContent = SUMMARY_TEXT[result.verdict.level] ?? '';
-    const fill = document.getElementById('hero-score-fill');
-    fill.className = `score-fill score-${result.verdict.level}`;
-    fill.style.width = '0%';
-    setTimeout(() => { fill.style.width = result.score + '%'; }, 50);
-    document.getElementById('result-hero').className = `glass p-6 border-2 verdict-hero-${result.verdict.level}`;
+    // Banner sichtbar, Ergebnis-Block versteckt
+    document.getElementById('hero-analyzing-banner').classList.remove('hidden');
+    document.getElementById('hero-result-block').classList.add('hidden');
+    document.getElementById('result-hero').className = 'glass p-5 verdict-hero-info border-2';
 
     _renderExifMatrix(result);
     _renderFlags(result.flags);
 
     document.getElementById('check-another-btn').addEventListener('click', _reset, { once: true });
-    document.getElementById('result-state').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ─── Phase 5 OCR ──────────────────────────────────────────────────────────
@@ -339,7 +352,11 @@ const EchtCheckUI = (() => {
     };
     for (const id of ids) {
       const el = document.getElementById(id);
-      if (el) { el.className = 'phase-dot ' + (cls[level] || 'phase-dot-loading'); }
+      if (el) {
+        // Basis-Klasse beibehalten (phase-dot), Status-Klasse wechseln
+        const base = el.style.cssText ? 'phase-dot' : (el.className.includes('phase-dot') ? 'phase-dot' : 'phase-dot');
+        el.className = base + ' ' + (cls[level] || 'phase-dot-loading');
+      }
     }
   }
 
@@ -364,10 +381,18 @@ const EchtCheckUI = (() => {
     document.getElementById('ocr-no-text').classList.add('hidden');
     document.getElementById('ocr-skipped').classList.add('hidden');
     document.getElementById('ocr-progress-fill').style.width = '0%';
+    // Reset Banner / Ergebnis-Block
+    document.getElementById('hero-analyzing-banner').classList.remove('hidden');
+    document.getElementById('hero-result-block').classList.add('hidden');
+    document.getElementById('result-hero').className = 'glass p-5 verdict-hero-info border-2';
     // Reset dots
-    for (const id of ['dot-p1','dot-p1b','dot-p2','dot-p2b','dot-p3','dot-p3b','dot-p4','dot-p4b','dot-p5','dot-p5b']) {
+    for (const id of ['dot-p1','dot-p2','dot-p3','dot-p4','dot-p5']) {
       const el = document.getElementById(id);
       if (el) el.className = 'phase-dot phase-dot-loading';
+    }
+    for (const id of ['dot-p1b','dot-p2b','dot-p3b','dot-p4b','dot-p5b']) {
+      const el = document.getElementById(id);
+      if (el) el.className = 'phase-dot';
     }
     for (const id of ['p1-badge','p2-badge','p3-badge','p4-badge','p5-badge']) {
       const el = document.getElementById(id);
@@ -379,6 +404,7 @@ const EchtCheckUI = (() => {
     document.getElementById('welcome-state').classList.remove('hidden');
     if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
     phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
+    _analysisComplete = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

@@ -61,18 +61,27 @@ const EchtCheckOCR = (() => {
   ];
 
   // ─── OCR via Tesseract.js ─────────────────────────────────────────────────
+  // OCR-Timeout: max. 25 Sekunden, dann abbrechen (verhindert Hänger auf Mobile)
+  const OCR_TIMEOUT_MS = 25000;
+
   async function extractText(file, onProgress) {
     if (typeof Tesseract === 'undefined') {
       throw new Error('Tesseract.js nicht geladen');
     }
 
-    const result = await Tesseract.recognize(file, 'deu+eng', {
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('OCR-Timeout (>25s) – übersprungen')), OCR_TIMEOUT_MS)
+    );
+
+    const ocrPromise = Tesseract.recognize(file, 'deu+eng', {
       logger: m => {
         if (m.status === 'recognizing text' && onProgress) {
           onProgress(Math.round(m.progress * 100));
         }
       }
     });
+
+    const result = await Promise.race([ocrPromise, timeoutPromise]);
 
     const confidence = Math.round(result.data.confidence);
 
