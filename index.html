@@ -141,7 +141,7 @@
       <div id="tab-panel-image">
         <div class="text-center mb-8">
           <div class="inline-block bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
-            🔎 Metadaten · ELA · Frequenzanalyse · OCR-Text · KI-Modell (GPU)
+            🔎 Metadaten · ELA · Frequenzanalyse · OCR · KI-Analyse (Backend+Lokale LLM)
           </div>
           <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Ist das Bild oder die Meldung <span class="text-cyan-400">echt</span>?</h1>
           <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
@@ -259,7 +259,7 @@
             <span class="text-slate-700 text-xs">·</span>
             <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p5b" class="phase-dot" style="width:7px;height:7px"></span>OCR</span>
             <span class="text-slate-700 text-xs">·</span>
-            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p4b" class="phase-dot" style="width:7px;height:7px"></span>KI-Modell</span>
+            <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p4b" class="phase-dot" style="width:7px;height:7px"></span>KI-Analyse</span>
             <span id="meta-info" class="ml-auto text-xs text-slate-600"></span>
           </div>
         </div>
@@ -369,44 +369,38 @@
             </div>
           </details>
 
-          <!-- Phase 4: KI-Modell -->
-          <details class="phase-accordion" id="acc-phase4" open>
-            <summary>
-              <div id="dot-p4b" class="phase-dot phase-dot-loading"></div>
-              <span class="text-sm font-medium text-slate-300">KI-Modell (Serveranalyse)</span>
-              <span id="p4-badge" class="badge badge-muted ml-2">läuft…</span>
-              <span class="chevron">▼</span>
-            </summary>
-            <div class="phase-accordion-body space-y-3">
-              <div id="phase4-result" class="hidden space-y-3">
-                <div class="score-bar">
-                  <div id="phase4-score-fill" class="score-fill" style="width:0%"></div>
-                </div>
-                <div class="flex justify-between text-xs text-slate-500">
-                  <span>KI-generiert</span>
-                  <span id="phase4-score-text" class="font-mono text-slate-300"></span>
-                  <span>📷 Kamerafoto</span>
-                </div>
-                <p id="phase4-method" class="text-xs text-slate-600"></p>
-              </div>
-              <div id="phase4-offline" class="hidden">
-                <p class="text-slate-600 text-sm">⚠️ KI-Backend nicht erreichbar – Serveranalyse nicht verfügbar.</p>
-              </div>
-              <p class="text-xs text-slate-600">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Ein trainiertes KI-Modell (SwinV2, Microsoft) läuft auf einem lokalen Server mit dedizierter GPU und prüft das Bild auf Muster, die für KI-generierte Bilder typisch sind. Es wurde auf hunderttausenden echten und KI-generierten Fotos trainiert.</p>
-            </div>
-          </details>
-
-          <!-- Phase 6: LLM-Tiefenanalyse -->
+          <!-- Phase 6: KI-Gesamtanalyse (SwinV2 + Ollama) -->
           <details class="phase-accordion" id="acc-phase6" open>
             <summary>
               <div id="dot-p6b" class="phase-dot phase-dot-loading"></div>
-              <span class="text-sm font-medium text-slate-300">KI-Tiefenanalyse <span class="text-xs text-violet-400 font-normal">(Ollama)</span></span>
+              <span class="text-sm font-medium text-slate-300">KI-Gesamtanalyse <span class="text-xs text-cyan-500 font-normal">(Server & Ollama)</span></span>
               <span id="p6-badge" class="badge badge-muted ml-2">läuft…</span>
               <span class="chevron">▼</span>
             </summary>
-            <div class="phase-accordion-body space-y-3">
+            <div class="phase-accordion-body space-y-4">
 
-              <!-- Offline-State -->
+              <!-- Phase 4: SwinV2 (innerhalb Phase 6) -->
+              <div class="space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">🤖 Generative KI (SwinV2)</p>
+                
+                <div id="phase4-result" class="hidden space-y-3 glass p-4 border border-slate-700/50 rounded-xl">
+                  <div class="score-bar">
+                    <div id="phase4-score-fill" class="score-fill" style="width:0%"></div>
+                  </div>
+                  <div class="flex justify-between text-xs text-slate-500">
+                    <span>KI-generiert</span>
+                    <span id="phase4-score-text" class="font-mono text-slate-300"></span>
+                    <span>📷 Kamerafoto</span>
+                  </div>
+                  <p id="phase4-method" class="text-xs text-slate-600"></p>
+                </div>
+                
+                <div id="phase4-offline" class="hidden glass p-4 border border-amber-700/30 rounded-xl text-amber-500 text-sm">
+                  ⚠️ Serveranalyse (SwinV2) derzeit nicht erreichbar.
+                </div>
+              </div>
+
+              <!-- Offline-State Ollama -->
               <div id="llm-offline" class="hidden">
                 <div class="glass p-4 border border-slate-700/50 rounded-xl text-sm text-slate-500">
                   <p class="font-semibold text-slate-400 mb-1">⚠️ Ollama nicht installiert</p>
@@ -415,7 +409,7 @@
                 </div>
               </div>
 
-              <!-- Modell fehlt -->
+              <!-- Modell fehlt Ollama -->
               <div id="llm-model-missing" class="hidden">
                 <div class="glass p-4 border border-amber-700/30 rounded-xl text-sm text-amber-400">
                   <p class="font-semibold mb-1">📦 Modell noch nicht geladen</p>
@@ -425,25 +419,27 @@
               </div>
 
               <!-- Bild-Analyse Ergebnis -->
-              <div id="llm-image-result" class="hidden space-y-2">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">🖼️ Bildanalyse (Vision-KI)</p>
+              <div id="llm-image-result" class="hidden space-y-2 mt-4">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">🖼️ Bildforensik (Vision-KI)</p>
                 <div id="llm-image-flags" class="space-y-2"></div>
                 <p id="llm-image-explanation" class="text-xs text-slate-400 leading-relaxed"></p>
               </div>
 
               <!-- Text-Analyse Ergebnis -->
-              <div id="llm-text-result" class="hidden space-y-2">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">📝 Textanalyse (Text-KI)</p>
+              <div id="llm-text-result" class="hidden space-y-2 mt-4">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">📝 Inhalts-Check (Text-KI)</p>
                 <div id="llm-text-flags" class="space-y-2"></div>
                 <p id="llm-text-summary" class="text-xs text-slate-400 leading-relaxed"></p>
               </div>
 
               <!-- Kein Text erkannt -->
-              <div id="llm-no-text" class="hidden">
-                <p class="text-xs text-slate-600">Kein Text für Textanalyse gefunden – nur Bildanalyse durchgeführt.</p>
+              <div id="llm-no-text" class="hidden mt-2">
+                <p class="text-xs text-slate-600">Kein Text für KI-Inhaltsanalyse im Bild gefunden.</p>
               </div>
 
-              <p class="text-xs text-slate-600">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Ein lokales LLM (Gemma 3 + LLaVA) analysiert das Bild auf Fotomontagen und den Text auf Hetze, Fake-News und Manipulation – mit echtem Kontextverständnis, nicht nur Wortlisten. Alle Daten bleiben lokal auf deinem Server.</p>
+              <p class="text-xs text-slate-600 mt-4">💡 <strong class="text-slate-500">Was macht die KI-Gesamtanalyse?</strong><br>
+              Schritt 1 (SwinV2 Backend) untersucht auf Pixelebene, ob das Bild von einem KI-Generator (z.B. DALL-E) erstellt wurde.<br>
+              Schritt 2 (Lokales LLM via Ollama) "versteht" danach als Kontext-Detektiv sowohl den Bild-Inhalt auf versteckte Montagen/Fehler, als auch gefundene Texte auf Hetze oder Falschinformationen.</p>
             </div>
           </details>
 

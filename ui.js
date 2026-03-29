@@ -136,16 +136,13 @@ const EchtCheckUI = (() => {
           _p4IsReal = (r.method && r.method !== 'statistical_fallback');
           const lvl = (r.score ?? 50) >= 65 ? 'safe' : (r.score ?? 50) >= 40 ? 'warning' : 'danger';
           _setDot(['dot-p4'], lvl);
-          _setBadge('p4-badge', lvl, lvl === 'safe' ? 'Keine KI-Generierung' : lvl === 'danger' ? 'KI-generiert' : 'KI-Generierung möglich');
         } else {
           document.getElementById('phase4-offline').classList.remove('hidden');
           _setDot(['dot-p4'], 'warning');
-          _setBadge('p4-badge', 'warning', 'Nicht erreichbar');
         }
       } catch(e) {
         document.getElementById('phase4-offline').classList.remove('hidden');
         _setDot(['dot-p4'], 'warning');
-        _setBadge('p4-badge', 'warning', 'Offline');
       }
       // Alle Vorphasen fertig, aber wir zeigen das Banner erst nach P6 an.
 
@@ -196,10 +193,16 @@ const EchtCheckUI = (() => {
 
           const p6lvl = (phaseScores.p6 ?? 50) >= 65 ? 'safe'
                       : (phaseScores.p6 ?? 50) >= 40 ? 'warning' : 'danger';
-          _setDot(['dot-p6b'], p6lvl);
-          _setBadge('p6-badge', p6lvl,
-            p6lvl === 'safe' ? 'Keine Auffälligkeiten'
-            : p6lvl === 'danger' ? 'Probleme erkannt' : 'Leichte Auffälligkeiten');
+          
+          // Kombiniertes Master-Level (Worst-Case aus SwinV2 und Ollama)
+          const p4lvl = (phaseScores.p4 ?? 50) >= 65 ? 'safe' : (phaseScores.p4 ?? 50) >= 40 ? 'warning' : 'danger';
+          const masterLvl = (p6lvl === 'danger' || p4lvl === 'danger') ? 'danger'
+                          : (p6lvl === 'warning' || p4lvl === 'warning') ? 'warning' : 'safe';
+
+          _setDot(['dot-p6b', 'dot-p4'], masterLvl);
+          _setBadge('p6-badge', masterLvl,
+            masterLvl === 'safe' ? 'Keine Auffälligkeiten'
+            : masterLvl === 'danger' ? 'Probleme erkannt' : 'Leichte Auffälligkeiten');
 
         }
       } catch(e) {
