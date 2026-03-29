@@ -5,6 +5,7 @@ const EchtCheckUI = (() => {
   let _p4IsReal = false;
   let _ocrText = null;
   let _statusInterval = null;
+  let _reportFile = null;
 
   // ─── Verdict-Texte ─────────────────────────────────────────────────────────
   const VERDICT_TEXT = {
@@ -25,6 +26,7 @@ const EchtCheckUI = (() => {
   function init() {
     _setupDropZone();
     _setupFileInput();
+    _setupReportDropZone();
     _setupPaste();
     _setupParticles();
     document.getElementById('retry-btn').addEventListener('click', _reset);
@@ -37,6 +39,62 @@ const EchtCheckUI = (() => {
   }
 
   // ─── Input-Handler ─────────────────────────────────────────────────────────
+  function _setupReportDropZone() {
+    const zone = document.getElementById('report-drop-zone');
+    const input = document.getElementById('report-file-input');
+    if (!zone || !input) return;
+
+    zone.addEventListener('click', () => input.click());
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('border-rose-400'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('border-rose-400'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('border-rose-400');
+      const f = e.dataTransfer.files[0];
+      if (f) _handleReportFile(f);
+    });
+    input.addEventListener('change', e => { const f = e.target.files[0]; if(f) _handleReportFile(f); input.value=''; });
+  }
+
+  function _handleReportFile(file) {
+    if (!file.type.startsWith('image/')) return alert('Bitte nur Bilder hochladen.');
+    if (file.size > 20 * 1024 * 1024) return alert('Bild ist zu groß (max 20MB).');
+    
+    _reportFile = file;
+    const url = URL.createObjectURL(file);
+    document.getElementById('report-preview-img').src = url;
+    document.getElementById('report-preview-name').textContent = file.name;
+    
+    document.getElementById('report-drop-zone').classList.add('hidden');
+    document.getElementById('report-preview-container').classList.remove('hidden');
+    document.getElementById('report-form-body').classList.remove('opacity-50', 'pointer-events-none');
+  }
+
+  function clearReportImage() {
+    _reportFile = null;
+    document.getElementById('report-drop-zone').classList.remove('hidden');
+    document.getElementById('report-preview-container').classList.add('hidden');
+    document.getElementById('report-form-body').classList.add('opacity-50', 'pointer-events-none');
+    document.getElementById('report-proof-input').value = '';
+    document.getElementById('report-comment-input').value = '';
+  }
+
+  async function submitReport() {
+    if (!_reportFile) return;
+    const btn = document.getElementById('report-submit-btn');
+    const origText = btn.innerHTML;
+    btn.innerHTML = '<div class="spinner w-5 h-5 flex-shrink-0 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Übertrage in Datenbank...';
+    btn.disabled = true;
+
+    // TODO: (Phase 2) API Call an Backend-Datenbank
+    setTimeout(() => {
+      alert("✅ Der FAKE wurde erfolgreich an die Echt-Check Community Datenbank gemeldet!\nIn Kürze schlägt die KI bei diesem Bild sofort Alarm.");
+      clearReportImage();
+      btn.innerHTML = origText;
+      btn.disabled = false;
+      switchTab('image');
+    }, 1500);
+  }
+
   function _setupDropZone() {
     const zone = document.getElementById('drop-zone');
     const fi = document.getElementById('file-input');
@@ -56,7 +114,18 @@ const EchtCheckUI = (() => {
       const items = e.clipboardData?.items;
       if (!items) return;
       for (const item of items) {
-        if (item.type.startsWith('image/')) { const file = item.getAsFile(); if (file) { _handleFile(file); break; } }
+        if (item.type.startsWith('image/')) { 
+          const file = item.getAsFile(); 
+          if (file) { 
+            // Check active tab to route paste to analysis or report
+            if (!document.getElementById('tab-panel-report').classList.contains('hidden')) {
+              _handleReportFile(file);
+            } else {
+              _handleFile(file); 
+            }
+            break; 
+          } 
+        }
       }
     });
   }
@@ -580,11 +649,13 @@ const EchtCheckUI = (() => {
   }
 
   function switchTab(tab) {
-    const isImg = tab === 'image';
-    document.getElementById('tab-panel-image').classList.toggle('hidden', !isImg);
-    document.getElementById('tab-panel-url').classList.toggle('hidden', isImg);
-    document.getElementById('tab-image').className = `px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${isImg ? 'bg-cyan-500 text-slate-900' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`;
-    document.getElementById('tab-url').className = `px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${!isImg ? 'bg-violet-500 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`;
+    document.getElementById('tab-panel-image').classList.toggle('hidden', tab !== 'image');
+    document.getElementById('tab-panel-url').classList.toggle('hidden', tab !== 'url');
+    document.getElementById('tab-panel-report').classList.toggle('hidden', tab !== 'report');
+    
+    document.getElementById('tab-image').className = `px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${tab === 'image' ? 'bg-cyan-500 text-slate-900' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`;
+    document.getElementById('tab-url').className = `px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${tab === 'url' ? 'bg-violet-500 text-white' : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`;
+    document.getElementById('tab-report').className = `px-5 py-2.5 rounded-xl font-semibold text-sm transition-all ${tab === 'report' ? 'bg-rose-500 text-white' : 'bg-white/5 border border-rose-500/30 text-rose-400 hover:text-white hover:bg-rose-500/20'}`;
   }
 
   async function submitUrl() {
@@ -681,7 +752,7 @@ const EchtCheckUI = (() => {
     document.getElementById('url-result-state').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  return { init, switchTab, submitUrl };
+  return { init, switchTab, submitUrl, submitReport, clearReportImage };
 })();
 
 document.addEventListener('DOMContentLoaded', () => EchtCheckUI.init());
