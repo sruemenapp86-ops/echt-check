@@ -73,24 +73,51 @@ const EchtCheckAPI = (() => {
     } catch { return { online: false }; }
   }
 
-  async function analyzeLLMText(text) {
+  // ─── Neuer Polling-Helper für Warteschlange ───
+  async function _pollLlmJob(jobId, onProgress) {
+    while (true) {
+      await new Promise(r => setTimeout(r, 2500)); // Alle 2.5 Sekunden klopfen
+      try {
+        const r = await fetch(`${BASE}/analyze/llm/${jobId}`);
+        const data = await r.json();
+        
+        if (!r.ok) {
+           if (r.status === 404) throw new Error('Ticket abgelaufen / nicht mehr im System');
+           throw new Error(data.error || 'Job Check Error');
+        }
+
+        if (data.status === 'done') return data.result;
+        if (data.status === 'error') throw new Error(data.error);
+        if (data.status === 'pending' && onProgress) {
+           onProgress(data.position, data.estimatedSeconds);
+        }
+      } catch (e) {
+        throw e;
+      }
+    }
+  }
+
+  async function analyzeLLMText(text, onProgress) {
     try {
-      const r = await fetch(`${BASE}/analyze/llm`, {
+      const initR = await fetch(`${BASE}/analyze/llm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'text', text }),
-        signal: AbortSignal.timeout(50000)
+        signal: AbortSignal.timeout(10000)
       });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
-      return data;
+      const data = await initR.json();
+      if (!initR.ok) throw new Error(data.error || `HTTP ${initR.status}`);
+      if (data.status === 'queued' && data.jobId) {
+        return await _pollLlmJob(data.jobId, onProgress);
+      }
+      return data; // Fallback
     } catch(e) {
       console.warn('[EchtCheck LLM-Text] Fehler:', e.message);
       return null;
     }
   }
 
-  async function analyzeLLMImage(file) {
+  async function analyzeLLMImage(file, onProgress) {
     try {
       // Bild Client-seitig verkleinern um 413 Payload Too Large zu verhindern
       const base64 = await new Promise((resolve, reject) => {
@@ -127,14 +154,22 @@ const EchtCheckAPI = (() => {
         reader.readAsDataURL(file);
       });
 
-      const r = await fetch(`${BASE}/analyze/llm`, {
+      const initR = await fetch(`${BASE}/analyze/llm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'image', imageBase64: base64, mimeType: 'image/jpeg' }),
-        signal: AbortSignal.timeout(100000)
+        signal: AbortSignal.timeout(15000) // Ticket holen geht schnell
       });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      const data = await initR.json();
+      if (!initR.ok) {
+         const e = new Error(data.error || `HTTP ${initR.status}`);
+         e.offline = !!data.offline;
+         e.modelMissing = !!data.modelMissing;
+         throw e;
+      }
+      if (data.status === 'queued' && data.jobId) {
+        return await _pollLlmJob(data.jobId, onProgress);
+      }
       return data;
     } catch(e) {
       console.warn('[EchtCheck LLM-Vision] Fehler:', e.message);

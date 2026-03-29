@@ -257,6 +257,51 @@ const OLLAMA_BASE = process.env.OLLAMA_URL || 'http://host.docker.internal:11434
 const LLM_TEXT_MODEL  = 'gemma3:4b';
 const LLM_VISION_MODEL = 'llava:7b-v1.6-mistral-q4_K_M';
 
+// ─── LLM Job Queue System (Verhindert GPU Memory Overload) ───
+const llmJobQueue = [];
+const llmJobResults = new Map();
+let isLlmWorking = false;
+
+async function processLlmQueue() {
+  if (isLlmWorking || llmJobQueue.length === 0) return;
+  isLlmWorking = true;
+  
+  const job = llmJobQueue.shift();
+  try {
+    const result = await _executeLlmAnalysis(job);
+    llmJobResults.set(job.id, { status: 'done', result });
+  } catch (err) {
+    llmJobResults.set(job.id, { status: 'error', error: err.message, modelMissing: err.modelMissing, offline: err.offline });
+  } finally {
+    isLlmWorking = false;
+    processLlmQueue(); // Abarbeitung fortsetzen
+  }
+}
+
+app.get('/analyze/llm/:jobId', (req, res) => {
+  const jobId = req.params.jobId;
+  const result = llmJobResults.get(jobId);
+  
+  if (result) {
+    // Wenn Resultat bereits da ist (fertig oder fehler)
+    // Damit der RAM nicht voll läuft, löschen wir das Ergebnis nach Ausgabe (oder man nutzt TTL - hier simpel)
+    if (result.status === 'done' || result.status === 'error') {
+       const ret = { ...result };
+       llmJobResults.delete(jobId);
+       return res.json(ret);
+    }
+  }
+
+  // Job noch in Warteschlange
+  const pos = llmJobQueue.findIndex(j => j.id === jobId);
+  if (pos === -1 && !isLlmWorking) {
+    return res.status(404).json({ error: 'Job nicht gefunden.' });
+  }
+
+  const actPos = pos === -1 ? 0 : (pos + 1); // 0 = Bearbeitung läuft auf GPU, >0 = Position in Schlange
+  res.json({ status: 'pending', position: actPos, estimatedSeconds: (actPos + 1) * 35 });
+});
+
 async function checkOllamaOnline() {
   try {
     const r = await axios.get(`${OLLAMA_BASE}/api/tags`, { timeout: 3000 });
@@ -312,6 +357,17 @@ app.post('/analyze/llm', async (req, res) => {
   const online = await checkOllamaOnline();
   if (!online) return res.status(503).json({ error: 'Ollama nicht erreichbar – bitte starten', offline: true });
 
+  const jobId = crypto.randomUUID();
+  llmJobQueue.push({ id: jobId, type, text, imageBase64, mimeType });
+  
+  // Worker triggern (arbeitet nur, wenn nicht besetzt)
+  processLlmQueue();
+
+  res.status(202).json({ status: 'queued', jobId });
+});
+
+// Die eigentliche Arbeitslast, die nur sequenziell aufgerufen wird
+async function _executeLlmAnalysis({ type, text, imageBase64 }) {
   try {
     if (type === 'text') {
       if (!text || text.length < 10) return res.status(400).json({ error: 'Text zu kurz' });
@@ -383,11 +439,11 @@ WICHTIG: Das Array 'flags' darf nur die tatsächlichen, im Bild gefundenen Fehle
       res.json({ type: 'image', model: LLM_VISION_MODEL, ...parsed });
     }
   } catch(e) {
-    if (e.code === 'ECONNABORTED') return res.status(504).json({ error: 'LLM-Timeout – Modell zu langsam', offline: false });
-    if (e.response?.status === 404) return res.status(404).json({ error: `Modell nicht gefunden. Bitte: ollama pull ${type === 'text' ? LLM_TEXT_MODEL : LLM_VISION_MODEL}`, modelMissing: true });
-    res.status(500).json({ error: e.message });
+    if (e.code === 'ECONNABORTED') { e.offline = false; e.message = 'LLM-Timeout – Modell zu langsam'; throw e; }
+    if (e.response?.status === 404) { e.modelMissing = true; e.message = `Modell nicht gefunden. Bitte: ollama pull ${type === 'text' ? LLM_TEXT_MODEL : LLM_VISION_MODEL}`; throw e; }
+    throw e;
   }
-});
+}
 
 const PORT = process.env.PORT || 3500;
 app.listen(PORT, () => console.log(`Echt-Check API laeuft auf Port ${PORT}`));

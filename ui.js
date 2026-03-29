@@ -253,15 +253,29 @@ const EchtCheckUI = (() => {
           ];
           let aiStepIdx = 0;
           _setHeroStatus(aiSteps[0]);
+          let isQueueing = false;
           _statusInterval = setInterval(() => {
+             if (isQueueing) return; // Wenn Queue-Polling übernimmt, Hype-Slogans pausieren
              aiStepIdx = (aiStepIdx + 1) % aiSteps.length;
              _setHeroStatus(aiSteps[aiStepIdx]);
           }, 4500);
 
+          const _queueUpdate = (type) => (pos, est) => {
+             isQueueing = true;
+             if (pos > 0) {
+                _setHeroStatus(`Warteschlange (${type}): Position ${pos} (~${est}s rest)`);
+                _setBadge('p6-badge', 'loading', `Pos ${pos}...`);
+             } else {
+                isQueueing = false;
+                _setHeroStatus(`GPU übernimmt ${type}-Analyse...`);
+                _setBadge('p6-badge', 'loading', 'Rechnet...');
+             }
+          };
+
           const [imgRes, txtRes] = await Promise.allSettled([
-            llmStatus.visionReady ? EchtCheckAPI.analyzeLLMImage(file) : Promise.resolve(null),
+            llmStatus.visionReady ? EchtCheckAPI.analyzeLLMImage(file, _queueUpdate('Bild-KI')) : Promise.resolve(null),
             (llmStatus.textReady && _ocrText && _ocrText.length >= 20)
-              ? EchtCheckAPI.analyzeLLMText(_ocrText)
+              ? EchtCheckAPI.analyzeLLMText(_ocrText, _queueUpdate('Text-KI'))
               : Promise.resolve(null)
           ]);
 
