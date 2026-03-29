@@ -85,14 +85,21 @@ const EchtCheckUI = (() => {
     btn.innerHTML = '<div class="spinner w-5 h-5 flex-shrink-0 mr-2 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Übertrage in Datenbank...';
     btn.disabled = true;
 
-    // TODO: (Phase 2) API Call an Backend-Datenbank
-    setTimeout(() => {
-      alert("✅ Der FAKE wurde erfolgreich an die Echt-Check Community Datenbank gemeldet!\nIn Kürze schlägt die KI bei diesem Bild sofort Alarm.");
+    const proofUrl = document.getElementById('report-proof-input').value.trim();
+    const comment = document.getElementById('report-comment-input').value.trim();
+
+    const res = await EchtCheckAPI.reportFake(_reportFile, proofUrl, comment);
+    
+    if (res && res.success) {
+      alert("✅ Der FAKE wurde erfolgreich in der Echt-Check Datenbank hinterlegt!\nDas System wird bei diesem Bild in Zukunft sofort Alarm schlagen.");
       clearReportImage();
-      btn.innerHTML = origText;
-      btn.disabled = false;
       switchTab('image');
-    }, 1500);
+    } else {
+      alert("❌ Fehler bei der Übertragung an die Datenbank. Server erreichbar?");
+    }
+    
+    btn.innerHTML = origText;
+    btn.disabled = false;
   }
 
   function _setupDropZone() {

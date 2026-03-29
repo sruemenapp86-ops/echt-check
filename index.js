@@ -22,12 +22,55 @@ const db = new Pool({
 
 const MODEL_URL = process.env.MODEL_URL || 'http://model:8000';
 
+// ─── DB Initialisierung: Eigene Fake-Datenbank ───
+async function initDB() {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS community_fakes (
+        id SERIAL PRIMARY KEY,
+        image_hash VARCHAR(255) UNIQUE,
+        proof_url TEXT,
+        comment TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        verified BOOLEAN DEFAULT FALSE
+      )
+    `);
+    console.log('[DB] Community-Schild (community_fakes) ist bereit.');
+  } catch (err) {
+    console.error('[DB] Fehler beim Erstellen der Community-Fake DB:', err.message);
+  }
+}
+initDB();
+
 app.get('/health', async (req, res) => {
   try {
     await db.query('SELECT 1');
     res.json({ status: 'ok', gpu: true, db: 'connected' });
   } catch (e) {
     res.status(500).json({ status: 'error', message: e.message });
+  }
+});
+
+// ─── NEU: Endpoint für das Hochladen/Melden von Community Fakes ───
+app.post('/report/fake', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'Kein Bild uebermittelt' });
+    const { proofUrl, comment } = req.body || {};
+
+    // Wir erzeugen sofort den digitalen Fingerabdruck des Bildes
+    const hash = crypto.createHash('md5').update(req.file.buffer).digest('hex');
+
+    await db.query(`
+      INSERT INTO community_fakes (image_hash, proof_url, comment) 
+      VALUES ($1, $2, $3)
+      ON CONFLICT (image_hash) DO NOTHING
+    `, [hash, proofUrl || null, comment || null]);
+
+    console.log(`[Community-Schild] Neuer Fake an die DB gemeldet! Hash: ${hash}`);
+    res.json({ success: true, hash });
+  } catch (e) {
+    console.error('[Community-Schild] Fehler beim Report:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
@@ -38,14 +81,29 @@ app.post('/analyze/image', upload.single('image'), async (req, res) => {
     const imageBuffer = req.file.buffer;
     const hash = crypto.createHash('md5').update(imageBuffer).digest('hex');
 
-    // Cache pruefen
+    // Cache pruefen (bekannte System Hashes)
     const existing = await db.query('SELECT * FROM image_hashes WHERE phash = $1', [hash]);
     if (existing.rows.length > 0) {
       const row = existing.rows[0];
       return res.json({ source: 'cache', hash, ...row });
     }
 
-    // KI-Modell anfragen
+    // ─── NEU: Community-Schild greift vor Phase 2 ein ───
+    try {
+      const comFake = await db.query('SELECT * FROM community_fakes WHERE image_hash = $1', [hash]);
+      if (comFake.rows.length > 0) {
+        // Bekannter Community-Fake! Analyse sofort mit 100% Alarm abschließen
+        console.log(`[Community-Schild] Bekannter Fake blockiert! (Hash: ${hash})`);
+        return res.json({
+          source: 'community_db', hash,
+          score: 15, verdict: 'fake', confidence: 100, method: 'community_shield',
+          comment: comFake.rows[0].comment,
+          proof: comFake.rows[0].proof_url
+        });
+      }
+    } catch(err) {}
+
+    // KI-Modell anfragen (Wenn unbekannt)
     let aiResult = { score: 50, verdict: 'uncertain', confidence: 0, method: 'statistical_fallback' };
     try {
       const modelRes = await axios.post(`${MODEL_URL}/predict`, imageBuffer, {

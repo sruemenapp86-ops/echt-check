@@ -142,5 +142,25 @@ const EchtCheckAPI = (() => {
     }
   }
 
-  return { ping, analyzeImage, checkDomain, analyzeUrl, checkLLMStatus, analyzeLLMText, analyzeLLMImage };
+  async function reportFake(file, proofUrl, comment) {
+    try {
+      const fd = new FormData();
+      fd.append('image', file, file.name);
+      if (proofUrl) fd.append('proofUrl', proofUrl);
+      if (comment) fd.append('comment', comment);
+
+      const r = await fetch(`${BASE}/report/fake`, {
+        method: 'POST',
+        body: fd,
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch(e) {
+      console.warn('[EchtCheck API] Fake-Meldung fehlgeschlagen:', e.message);
+      return null;
+    }
+  }
+
+  return { ping, analyzeImage, checkDomain, analyzeUrl, checkLLMStatus, analyzeLLMText, analyzeLLMImage, reportFake };
 })();
