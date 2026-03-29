@@ -1,8 +1,9 @@
 const EchtCheckUI = (() => {
   let currentObjectUrl = null;
-  let phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
+  let phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null, p6: null };
   let _analysisComplete = false;
-  let _p4IsReal = false; // true wenn KI-Modell kein Fallback war
+  let _p4IsReal = false;
+  let _ocrText = null; // OCR-Text für LLM-Weitergabe
 
   // ─── Verdict-Texte ─────────────────────────────────────────────────────────
   const VERDICT_TEXT = {
@@ -111,6 +112,7 @@ const EchtCheckUI = (() => {
         });
         document.getElementById('ocr-loading').classList.add('hidden');
         _showPhase5Results(ocr);
+        _ocrText = ocr.valid ? ocr.text : null; // für LLM merken
         phaseScores.p5 = ocr.valid ? ocr.score : null;
         const lvl5 = !ocr.valid ? 'info' : ocr.level;
         _setDot(['dot-p5'], lvl5);
@@ -145,8 +147,65 @@ const EchtCheckUI = (() => {
         _setDot(['dot-p4'], 'warning');
         _setBadge('p4-badge', 'warning', 'Offline');
       }
-      // Alle Phasen fertig – jetzt erst das Endergebnis anzeigen
+      // Alle Vorphasen fertig
       _finalizeHero();
+
+      // Phase 6: LLM-Tiefenanalyse (läuft nach Finale, aktualisiert danach nochmal)
+      _setDot(['dot-p6b'], 'loading');
+      _setBadge('p6-badge', 'info', 'läuft…');
+      try {
+        const llmStatus = await EchtCheckAPI.checkLLMStatus();
+        if (!llmStatus.online) {
+          document.getElementById('llm-offline').classList.remove('hidden');
+          _setDot(['dot-p6b'], 'info');
+          _setBadge('p6-badge', 'info', 'Ollama offline');
+        } else if (!llmStatus.textReady && !llmStatus.visionReady) {
+          document.getElementById('llm-model-missing').classList.remove('hidden');
+          _setDot(['dot-p6b'], 'warning');
+          _setBadge('p6-badge', 'warning', 'Modell fehlt');
+        } else {
+          // Beide LLM-Anfragen parallel starten
+          const [imgRes, txtRes] = await Promise.allSettled([
+            llmStatus.visionReady ? EchtCheckAPI.analyzeLLMImage(file) : Promise.resolve(null),
+            (llmStatus.textReady && _ocrText && _ocrText.length >= 20)
+              ? EchtCheckAPI.analyzeLLMText(_ocrText)
+              : Promise.resolve(null)
+          ]);
+
+          const imgData = imgRes.status === 'fulfilled' ? imgRes.value : null;
+          const txtData = txtRes.status === 'fulfilled' ? txtRes.value : null;
+
+          _showPhase6Results(imgData, txtData);
+
+          // Score berechnen (niedrigster Score gewinnt - Vorsichtsprinzip)
+          let p6scores = [];
+          if (imgData) {
+            const imgScore = imgData.manipulated ? Math.min(imgData.confidence ?? 50, 40)
+                           : Math.max(60, 100 - (imgData.confidence ?? 50));
+            p6scores.push(imgScore);
+          }
+          if (txtData) {
+            p6scores.push(txtData.score ?? 50);
+          }
+          if (p6scores.length) {
+            phaseScores.p6 = Math.round(p6scores.reduce((a,b)=>a+b,0)/p6scores.length);
+          }
+
+          const p6lvl = (phaseScores.p6 ?? 50) >= 65 ? 'safe'
+                      : (phaseScores.p6 ?? 50) >= 40 ? 'warning' : 'danger';
+          _setDot(['dot-p6b'], p6lvl);
+          _setBadge('p6-badge', p6lvl,
+            p6lvl === 'safe' ? 'Keine Auffälligkeiten'
+            : p6lvl === 'danger' ? 'Probleme erkannt' : 'Leichte Auffälligkeiten');
+
+          // Hero-Score nachträglich mit p6 aktualisieren
+          _finalizeHero();
+        }
+      } catch(e) {
+        console.warn('Phase6 LLM:', e.message);
+        _setDot(['dot-p6b'], 'info');
+        _setBadge('p6-badge', 'info', 'Fehler');
+      }
 
     } catch(err) { _showError(err.message); }
   }
@@ -165,13 +224,13 @@ const EchtCheckUI = (() => {
 
     // Gewichtung:
     // - p4 (KI-Modell) doppelt: NUR wenn kein OCR-Ergebnis vorhanden UND kein Fallback
-    //   → bei Screenshots mit Text soll OCR gleichwertig zählen
-    // - p4 Fallback (score=50): zählt nur einfach, nicht doppelt
+    // - p6 (LLM) doppelt: tiefste Analyse, hat Vorrang
     let weighted = [...scores];
     const p4ShouldDouble = phaseScores.p4 !== null
-      && phaseScores.p5 === null   // kein OCR-Ergebnis
-      && _p4IsReal;                // kein statistical_fallback
+      && phaseScores.p5 === null
+      && _p4IsReal;
     if (p4ShouldDouble) weighted.push(phaseScores.p4);
+    if (phaseScores.p6 !== null) weighted.push(phaseScores.p6); // p6 extra Gewicht
     const avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
     const level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
     const vt = VERDICT_TEXT[level];
@@ -411,13 +470,18 @@ const EchtCheckUI = (() => {
       const el = document.getElementById(id);
       if (el) el.className = 'phase-dot phase-dot-loading';
     }
-    for (const id of ['dot-p1b','dot-p2b','dot-p3b','dot-p4b','dot-p5b']) {
+    for (const id of ['dot-p1b','dot-p2b','dot-p3b','dot-p4b','dot-p5b','dot-p6b']) {
       const el = document.getElementById(id);
-      if (el) el.className = 'phase-dot';
+      if (el) el.className = 'phase-dot phase-dot-loading';
     }
-    for (const id of ['p1-badge','p2-badge','p3-badge','p4-badge','p5-badge']) {
+    for (const id of ['p1-badge','p2-badge','p3-badge','p4-badge','p5-badge','p6-badge']) {
       const el = document.getElementById(id);
       if (el) { el.className = 'badge badge-muted ml-2'; el.textContent = 'läuft…'; }
+    }
+    // Phase 6 LLM-Elemente zurücksetzen
+    for (const id of ['llm-offline','llm-model-missing','llm-image-result','llm-text-result','llm-no-text']) {
+      const el = document.getElementById(id);
+      if (el) el.classList.add('hidden');
     }
     document.getElementById('hero-score').textContent = '–';
     document.getElementById('hero-verdict').textContent = 'Wird analysiert…';

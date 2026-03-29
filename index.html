@@ -396,8 +396,60 @@
             </div>
           </details>
 
+          <!-- Phase 6: LLM-Tiefenanalyse -->
+          <details class="phase-accordion" id="acc-phase6" open>
+            <summary>
+              <div id="dot-p6b" class="phase-dot phase-dot-loading"></div>
+              <span class="text-sm font-medium text-slate-300">KI-Tiefenanalyse <span class="text-xs text-violet-400 font-normal">(Ollama)</span></span>
+              <span id="p6-badge" class="badge badge-muted ml-2">läuft…</span>
+              <span class="chevron">▼</span>
+            </summary>
+            <div class="phase-accordion-body space-y-3">
+
+              <!-- Offline-State -->
+              <div id="llm-offline" class="hidden">
+                <div class="glass p-4 border border-slate-700/50 rounded-xl text-sm text-slate-500">
+                  <p class="font-semibold text-slate-400 mb-1">⚠️ Ollama nicht installiert</p>
+                  <p class="text-xs mb-2">Für die KI-Tiefenanalyse muss Ollama lokal laufen. Einmalige Installation erforderlich.</p>
+                  <a href="https://ollama.com/download" target="_blank" class="text-violet-400 text-xs hover:underline">→ ollama.com/download</a>
+                </div>
+              </div>
+
+              <!-- Modell fehlt -->
+              <div id="llm-model-missing" class="hidden">
+                <div class="glass p-4 border border-amber-700/30 rounded-xl text-sm text-amber-400">
+                  <p class="font-semibold mb-1">📦 Modell noch nicht geladen</p>
+                  <p class="text-xs text-slate-400">Einmalig im Terminal ausführen:</p>
+                  <code class="block mt-1 text-xs bg-black/30 rounded p-2 text-cyan-300">ollama pull gemma3:4b<br>ollama pull llava:7b-v1.6-mistral-q4_K_M</code>
+                </div>
+              </div>
+
+              <!-- Bild-Analyse Ergebnis -->
+              <div id="llm-image-result" class="hidden space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">🖼️ Bildanalyse (Vision-KI)</p>
+                <div id="llm-image-flags" class="space-y-2"></div>
+                <p id="llm-image-explanation" class="text-xs text-slate-400 leading-relaxed"></p>
+              </div>
+
+              <!-- Text-Analyse Ergebnis -->
+              <div id="llm-text-result" class="hidden space-y-2">
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-widest">📝 Textanalyse (Text-KI)</p>
+                <div id="llm-text-flags" class="space-y-2"></div>
+                <p id="llm-text-summary" class="text-xs text-slate-400 leading-relaxed"></p>
+              </div>
+
+              <!-- Kein Text erkannt -->
+              <div id="llm-no-text" class="hidden">
+                <p class="text-xs text-slate-600">Kein Text für Textanalyse gefunden – nur Bildanalyse durchgeführt.</p>
+              </div>
+
+              <p class="text-xs text-slate-600">💡 <strong class="text-slate-500">Was bedeutet das?</strong> Ein lokales LLM (Gemma 3 + LLaVA) analysiert das Bild auf Fotomontagen und den Text auf Hetze, Fake-News und Manipulation – mit echtem Kontextverständnis, nicht nur Wortlisten. Alle Daten bleiben lokal auf deinem Server.</p>
+            </div>
+          </details>
+
         </div>
       </div>
+
 
       <!-- Aktionen -->
       <div class="flex justify-center pt-2">

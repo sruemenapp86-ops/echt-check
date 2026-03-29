@@ -193,5 +193,101 @@ app.post('/analyze/url', async (req, res) => {
   res.json({ url: parsed.href, domain, domainInfo, ...content, textLength: content.text.length });
 });
 
+// ─── Ollama LLM Analyse ────────────────────────────────────────────────────
+const OLLAMA_BASE = process.env.OLLAMA_URL || 'http://host.docker.internal:11434';
+const LLM_TEXT_MODEL  = 'gemma3:4b';
+const LLM_VISION_MODEL = 'llava:7b-v1.6-mistral-q4_K_M';
+
+async function checkOllamaOnline() {
+  try {
+    const r = await axios.get(`${OLLAMA_BASE}/api/tags`, { timeout: 3000 });
+    return r.status === 200;
+  } catch { return false; }
+}
+
+app.get('/llm/status', async (req, res) => {
+  const online = await checkOllamaOnline();
+  if (!online) return res.json({ online: false, models: [] });
+  try {
+    const r = await axios.get(`${OLLAMA_BASE}/api/tags`, { timeout: 3000 });
+    const models = (r.data.models || []).map(m => m.name);
+    res.json({ online: true, models, textReady: models.some(m => m.includes('gemma')), visionReady: models.some(m => m.includes('llava')) });
+  } catch(e) { res.json({ online: false, error: e.message }); }
+});
+
+app.post('/analyze/llm', async (req, res) => {
+  const { type, text, imageBase64, mimeType } = req.body || {};
+  if (!type || !['text','image'].includes(type)) return res.status(400).json({ error: 'type muss "text" oder "image" sein' });
+
+  const online = await checkOllamaOnline();
+  if (!online) return res.status(503).json({ error: 'Ollama nicht erreichbar – bitte starten', offline: true });
+
+  try {
+    if (type === 'text') {
+      if (!text || text.length < 10) return res.status(400).json({ error: 'Text zu kurz' });
+
+      const prompt = `Du bist ein Experte für Medienkompetenz und Faktenprüfung in Deutschland.
+Analysiere den folgenden Text auf problematische Inhalte. Sei präzise und fair.
+
+Prüfe auf:
+1. Hetze und Hasskommunikation (Volksverhetzung §130 StGB): Pauschalvorwürfe, Entmenschlichung, Gewaltaufrufe
+2. Fake-News-Muster: unbelegte Sensationsbehauptungen, Verschwörungstheorien, Gerüchte als Fakten
+3. Manipulative Formulierungen: Angst-Trigger, Dringlichkeit, emotionale Überwältigung
+4. Desinformation: nachweislich falsche oder irreführende Aussagen
+
+Text: """${text.slice(0, 3000)}"""
+
+Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
+{"suspicious":true/false,"score":0-100,"verdict":"Unauffällig oder Textmuster auffällig oder Manipulation erkannt oder Hetze erkannt","flags":[{"type":"hate/fake/manipulation/disinfo","text":"kurze Erklärung auf Deutsch","severity":"low/medium/high"}],"summary":"1-2 Sätze Zusammenfassung auf Deutsch"}`;
+
+      const r = await axios.post(`${OLLAMA_BASE}/api/generate`, {
+        model: LLM_TEXT_MODEL, prompt, stream: false, format: 'json',
+        options: { temperature: 0.1, num_predict: 500 }
+      }, { timeout: 45000 });
+
+      let parsed;
+      try { parsed = typeof r.data.response === 'string' ? JSON.parse(r.data.response) : r.data.response; }
+      catch { return res.status(500).json({ error: 'LLM hat kein valides JSON geliefert', raw: r.data.response?.slice(0,200) }); }
+
+      res.json({ type: 'text', model: LLM_TEXT_MODEL, ...parsed });
+
+    } else if (type === 'image') {
+      if (!imageBase64) return res.status(400).json({ error: 'imageBase64 fehlt' });
+
+      const prompt = `Du bist ein forensischer Bildanalyst. Untersuche dieses Bild auf Anzeichen von Manipulation oder Fälschung.
+
+Prüfe auf:
+1. Fotomontage: Wurden Personen oder Objekte aus verschiedenen Fotos zusammengefügt?
+2. Inkonsistente Beleuchtung, Schatten oder Perspektive zwischen Bildteilen
+3. Unnatürliche Übergänge, weichgezeichnete Ränder um Objekte/Personen
+4. Nachträglich eingefügte Logos, Text oder Wasserzeichen
+5. Farbton-Unterschiede zwischen kombinierten Bildteilen
+6. Maßstabs- oder Proportionsfehler
+
+Antworte NUR mit gültigem JSON ohne Markdown:
+{"manipulated":true/false,"confidence":0-100,"verdict":"Wahrscheinlich authentisch oder Möglicherweise manipuliert oder Wahrscheinlich manipuliert","flags":["Beschreibung Auffälligkeit 1"],"explanation":"1-2 Sätze auf Deutsch was du erkannt hast"}`;
+
+      const r = await axios.post(`${OLLAMA_BASE}/api/generate`, {
+        model: LLM_VISION_MODEL,
+        prompt,
+        images: [imageBase64],
+        stream: false,
+        format: 'json',
+        options: { temperature: 0.1, num_predict: 400 }
+      }, { timeout: 90000 });
+
+      let parsed;
+      try { parsed = typeof r.data.response === 'string' ? JSON.parse(r.data.response) : r.data.response; }
+      catch { return res.status(500).json({ error: 'Vision-LLM hat kein valides JSON', raw: r.data.response?.slice(0,200) }); }
+
+      res.json({ type: 'image', model: LLM_VISION_MODEL, ...parsed });
+    }
+  } catch(e) {
+    if (e.code === 'ECONNABORTED') return res.status(504).json({ error: 'LLM-Timeout – Modell zu langsam', offline: false });
+    if (e.response?.status === 404) return res.status(404).json({ error: `Modell nicht gefunden. Bitte: ollama pull ${type === 'text' ? LLM_TEXT_MODEL : LLM_VISION_MODEL}`, modelMissing: true });
+    res.status(500).json({ error: e.message });
+  }
+});
+
 const PORT = process.env.PORT || 3500;
 app.listen(PORT, () => console.log(`Echt-Check API laeuft auf Port ${PORT}`));

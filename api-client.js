@@ -65,5 +65,55 @@ const EchtCheckAPI = (() => {
     }
   }
 
-  return { ping, analyzeImage, checkDomain, analyzeUrl };
+  async function checkLLMStatus() {
+    try {
+      const r = await fetch(`${BASE}/llm/status`, { signal: AbortSignal.timeout(5000) });
+      if (!r.ok) return { online: false };
+      return await r.json();
+    } catch { return { online: false }; }
+  }
+
+  async function analyzeLLMText(text) {
+    try {
+      const r = await fetch(`${BASE}/analyze/llm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'text', text }),
+        signal: AbortSignal.timeout(50000)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      return data;
+    } catch(e) {
+      console.warn('[EchtCheck LLM-Text] Fehler:', e.message);
+      return null;
+    }
+  }
+
+  async function analyzeLLMImage(file) {
+    try {
+      // Datei → Base64
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload = () => res(reader.result.split(',')[1]); // nur Base64-Teil
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+
+      const r = await fetch(`${BASE}/analyze/llm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'image', imageBase64: base64, mimeType: file.type }),
+        signal: AbortSignal.timeout(100000)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || `HTTP ${r.status}`);
+      return data;
+    } catch(e) {
+      console.warn('[EchtCheck LLM-Vision] Fehler:', e.message);
+      return null;
+    }
+  }
+
+  return { ping, analyzeImage, checkDomain, analyzeUrl, checkLLMStatus, analyzeLLMText, analyzeLLMImage };
 })();
