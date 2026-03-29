@@ -462,7 +462,7 @@
             prüfen</button>
           <button id="tab-url" onclick="EchtCheckUI.switchTab('url')"
             class="px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10">🔗
-            URL / Link prüfen</button>
+            Link / Video prüfen</button>
           <button id="tab-report" onclick="EchtCheckUI.switchTab('report')"
             class="px-5 py-2.5 rounded-xl font-semibold text-sm transition-all bg-white/5 border border-rose-500/20 text-rose-400 hover:text-white hover:bg-rose-500/20">🚨
             Fake melden</button>
@@ -526,17 +526,17 @@
           <div class="text-center mb-8">
             <div
               class="inline-block bg-violet-500/10 border border-violet-500/20 text-violet-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
-              🔗 Domain-Check · Text-Extraktion · Fake-News-Analyse · Hetze-Erkennung
+              🔗 Domain-Check · Text-Extraktion · Frame-Scraping · Deepfake-Video Scanner (Beta)
             </div>
-            <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Link oder
-              Artikel <span class="text-violet-400">prüfen</span></h1>
+            <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Website oder
+              Video <span class="text-violet-400">prüfen</span></h1>
             <p class="text-slate-400 max-w-lg mx-auto leading-relaxed">
-              Füge die URL eines Artikels, Posts oder Links ein. Das System analysiert Inhalt und Quelle automatisch.
+              Füge die URL eines Artikels, Presseberichts oder eines Videos (YouTube/TikTok/X) ein. Das System analysiert Inhalt, Quelle und Videoframes.
             </p>
           </div>
           <div class="glass p-6 space-y-4 rounded-2xl">
             <div class="flex gap-3">
-              <input id="url-input" type="url" placeholder="https://beispiel.de/artikel-oder-post..."
+              <input id="url-input" type="url" placeholder="https://beispiel.de/artikel oder youtube.com/..."
                 class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder-slate-600 focus:outline-none focus:border-violet-500/50 transition-colors"
                 onkeydown="if(event.key==='Enter') EchtCheckUI.submitUrl()">
               <button onclick="EchtCheckUI.submitUrl()" id="url-submit-btn"
