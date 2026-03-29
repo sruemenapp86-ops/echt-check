@@ -240,19 +240,20 @@ const EchtCheckUI = (() => {
     // Veto-Regel (Vorsichtsprinzip): Wenn Tiefenanalyse (P6) oder OCR (P5) 
     // rote Flaggen werfen (score <= 40), darf das Gesamt-Bild maximal als "manipuliert" gelten!
     const minCritical = Math.min(phaseScores.p6 ?? 100, phaseScores.p5 ?? 100);
+    let vetoTriggered = false;
     if (minCritical <= 40) {
-      avg = Math.min(avg, 40); // Kappung auf max. 40 (danger)
+      avg = Math.min(avg, 39); // Kappung strikt unter 40, damit level "danger" wird!
+      vetoTriggered = true;
     }
 
     const level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
     let vt = VERDICT_TEXT[level];
+    let summaryTxt = SUMMARY_TEXT[level];
     
     // Wenn das Veto gegriffen hat, scharfen Text wählen
-    if (minCritical <= 40 && avg <= 40) {
-      vt = {
-        title: 'Manipulation erkannt',
-        desc: 'Die KI-Tiefenanalyse (oder Texterkennung) hat starke Hinweise auf Bildmanipulation, Kontext-Fälschung oder problematische Inhalte gefunden.'
-      };
+    if (vetoTriggered) {
+      vt = { ...vt, label: 'Manipulation/Desinformation erkannt' };
+      summaryTxt = 'Die KI-Tiefenanalyse und Forensik hat sehr starke Hinweise auf Bildbearbeitung, Manipulation von Kontext oder hetzerische/problematische Inhalte gefunden.';
     }
 
     // Hero-Card styling updaten
@@ -277,7 +278,7 @@ const EchtCheckUI = (() => {
 
     // Verdict text
     document.getElementById('hero-verdict').textContent = vt.label;
-    document.getElementById('hero-summary').textContent = SUMMARY_TEXT[level];
+    document.getElementById('hero-summary').textContent = summaryTxt;
 
     // Score bar (animiert)
     const fill = document.getElementById('hero-score-fill');
