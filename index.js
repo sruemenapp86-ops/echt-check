@@ -412,16 +412,16 @@ Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
 
       const isSuspicious = preScore <= 55;
       const contextInstruction = isSuspicious 
-        ? `ACHTUNG SYSTEM-ALARM: Unser statistischer Scanner hat dieses Bild bereits als potenziellen DEEPFAKE eingestuft (Score: ${preScore}/100). Du musst jetzt VERSTÄRKT nach KI-Artefakten (verformte Gesichter, typische Montagefehler, unsinniger Hintergrund) suchen!`
-        : `HINWEIS: Unser statistischer Scanner stuft dieses Bild als extrem sicher und authentisch ein (Score: ${preScore}/100, Wahrscheinlich ein normales Kamerafoto). Widersprich dem Scanner nur, wenn du zweifelsfrei digitale Bildmanipulation (Fotomontage) erkennst!`;
+        ? `ACHTUNG SYSTEM-ALARM: Unser statistischer Scanner hat dieses Bild bereits als potenziellen DEEPFAKE eingestuft (Score: ${preScore}/100). Du musst jetzt VERSTÄRKT nach KI-Artefakten und inhaltlichen Unstimmigkeiten suchen!`
+        : `HINWEIS: Unser statistischer Scanner stuft dieses Bild als extrem sicher und authentisch ein (Score: ${preScore}/100). Widersprich dem Scanner nur, wenn du zweifelsfrei digitale Bildmanipulation (Fotomontage) erkennst!`;
 
       const prompt = `Untersuche dieses Bild äußerst objektiv. 
 ${contextInstruction}
 
-Suche zielgerichtet nach:
-1. Fotomontage (Zusammengefügte Personen, schwebende Objekte, fehlende Körperteile)
-2. Offensichtlich physikalisch unmögliche Beleuchtung
-3. Typische KI-Artefakte (z.B. verschmolzene Finger, unsinnige Details)
+Suche zielgerichtet nach diesen Kriterien:
+1. Semantische Plausibilität (WICHTIG): Zeigt das Bild bekannte Personen/Politiker (z.B. Merkel, Obama, Trump, Scholz) in absurden, bizarren oder extrem unwahrscheinlichen Situationen (z.B. rennend am Strand, lachend beim Biertrinken, in Gefängniskleidung)? Wenn ja, ist das ein EINDEUTIGER DEEPFAKE!
+2. Fotomontage: Zusammengefügte Personen, schwebende Objekte, fehlende Körperteile.
+3. Typische KI-Artefakte: Verschmolzene Finger, unsinnige Objekte, ineinanderlaufende Texturen.
 
 Antworte NUR mit gültigem JSON ohne Markdown oder Codeblöcke:
 {"manipulated":true/false,"confidence":0-100,"verdict":"Authentisch oder Manipuliert","flags":[],"explanation":""}
