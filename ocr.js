@@ -280,10 +280,33 @@ const EchtCheckOCR = (() => {
         detail: 'Kein Hinweis auf Falschmeldungen, Kettenpost oder Hasskommunikation.', suspicion: 0 });
     }
 
-    const finalScore = Math.max(0, Math.min(100, 100 - suspicionScore));
-    const level = finalScore >= 65 ? 'safe' : finalScore >= 40 ? 'warning' : 'danger';
-    const verdict = { safe: 'Text unauffällig', warning: 'Textmuster auffällig',
-      danger: hateScore >= 45 ? 'Hetze erkannt' : 'Starke Manipulation erkannt' }[level];
+    const rawScore = Math.max(0, Math.min(100, 100 - suspicionScore));
+
+    // Level: mindestens so schlimm wie das schlimmste gefundene Signal
+    // (verhindert "Text unauffällig" wenn Danger-Signale vorhanden sind)
+    const hasDangerSig = signals.some(s => s.level === 'danger');
+    const hasWarningSig = signals.some(s => s.level === 'warning');
+
+    let level;
+    if (hateScore >= 45 || suspicionScore >= 50) {
+      level = 'danger';
+    } else if (hasDangerSig || suspicionScore >= 25) {
+      // Danger-Signal vorhanden → mindestens warning
+      level = rawScore >= 55 ? 'warning' : 'danger';
+    } else if (hasWarningSig || suspicionScore >= 10) {
+      level = 'warning';
+    } else {
+      level = 'safe';
+    }
+
+    // Score ans Level anpassen (verhindert dass hoher rawScore trotz Warnung den Hero-Score verfälscht)
+    const finalScore = level === 'danger' ? Math.min(rawScore, 40)
+                     : level === 'warning' ? Math.min(rawScore, 64)
+                     : rawScore;
+
+    const verdict = level === 'safe' ? 'Text unauffällig'
+                  : level === 'warning' ? 'Textmuster auffällig'
+                  : hateScore >= 45 ? 'Hetze erkannt' : 'Manipulation erkannt';
 
     return { valid: true, text, score: finalScore, level, verdict, signals, hateScore,
       stats: { charCount: text.length, wordCount: text.split(/\s+/).filter(Boolean).length,

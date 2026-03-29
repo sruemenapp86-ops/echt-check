@@ -2,6 +2,7 @@ const EchtCheckUI = (() => {
   let currentObjectUrl = null;
   let phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
   let _analysisComplete = false;
+  let _p4IsReal = false; // true wenn KI-Modell kein Fallback war
 
   // ─── Verdict-Texte ─────────────────────────────────────────────────────────
   const VERDICT_TEXT = {
@@ -56,6 +57,7 @@ const EchtCheckUI = (() => {
   async function _handleFile(file) {
     phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
     _analysisComplete = false;
+    _p4IsReal = false;
     _showLoading(file);
 
     try {
@@ -129,6 +131,7 @@ const EchtCheckUI = (() => {
         if (r) {
           _showPhase4Results(r);
           phaseScores.p4 = r.score ?? 50;
+          _p4IsReal = (r.method && r.method !== 'statistical_fallback');
           const lvl = (r.score ?? 50) >= 65 ? 'safe' : (r.score ?? 50) >= 40 ? 'warning' : 'danger';
           _setDot(['dot-p4'], lvl);
           _setBadge('p4-badge', lvl, lvl === 'safe' ? 'Wahrscheinlich echt' : lvl === 'danger' ? 'Wahrscheinlich KI' : 'Nicht eindeutig');
@@ -160,9 +163,15 @@ const EchtCheckUI = (() => {
     const scores = Object.values(phaseScores).filter(v => v !== null);
     if (!scores.length) return;
 
-    // Phase 4 doppelt gewichten
+    // Gewichtung:
+    // - p4 (KI-Modell) doppelt: NUR wenn kein OCR-Ergebnis vorhanden UND kein Fallback
+    //   → bei Screenshots mit Text soll OCR gleichwertig zählen
+    // - p4 Fallback (score=50): zählt nur einfach, nicht doppelt
     let weighted = [...scores];
-    if (phaseScores.p4 !== null) weighted.push(phaseScores.p4);
+    const p4ShouldDouble = phaseScores.p4 !== null
+      && phaseScores.p5 === null   // kein OCR-Ergebnis
+      && _p4IsReal;                // kein statistical_fallback
+    if (p4ShouldDouble) weighted.push(phaseScores.p4);
     const avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
     const level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
     const vt = VERDICT_TEXT[level];
@@ -417,6 +426,7 @@ const EchtCheckUI = (() => {
     if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
     phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null };
     _analysisComplete = false;
+    _p4IsReal = false;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
