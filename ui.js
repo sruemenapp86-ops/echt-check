@@ -220,6 +220,18 @@ const EchtCheckUI = (() => {
           _p4IsReal = (r.method && r.method !== 'statistical_fallback');
           const lvl = (r.score ?? 50) >= 65 ? 'safe' : (r.score ?? 50) >= 40 ? 'warning' : 'danger';
           _setDot(['dot-p4'], lvl);
+
+          // ─── NEU: Kurzschluss bei Community-Schild! ───
+          if (r.method === 'community_shield') {
+             _setHeroStatus('🚨 ECHT-CHECK ABGEBROCHEN: BILD IST ALS FAKE GEMELDET!');
+             _setDot(['dot-p1','dot-p2','dot-p3','dot-p5','dot-p6b'], 'danger');
+             for (const id of ['p1-badge','p2-badge','p3-badge','p5-badge']) _setBadge(id, 'danger', 'Übersprungen');
+             _setBadge('p6-badge', 'danger', 'Gesperrt');
+             // Alle verbleibenden Scores massiv runtersetzen, um 100% Fake Hero zu garantieren
+             phaseScores.p1 = 15; phaseScores.p2 = 15; phaseScores.p3 = 15; phaseScores.p5 = 15; phaseScores.p6 = 15;
+             _finalizeHero(phaseScores, r);
+             return;
+          }
         } else {
           document.getElementById('phase4-offline').classList.remove('hidden');
           _setDot(['dot-p4'], 'warning');
@@ -581,6 +593,8 @@ const EchtCheckUI = (() => {
     document.getElementById('phase4-score-text').textContent = `${score} / 100`;
     const methodLabel = r.method === 'onnx_model'
       ? '🤖 SwinV2-Modell auf GPU (lokal, keine Datenweitergabe)'
+      : r.method === 'community_shield'
+      ? '🚨 COMMUNITY SCHILD (Direkter Datenbank-Treffer)'
       : '📊 Statistisches Fallback-Modell';
     document.getElementById('phase4-method').textContent = methodLabel;
     document.getElementById('phase4-result').classList.remove('hidden');
