@@ -419,7 +419,7 @@ Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
 ${contextInstruction}
 
 Suche zielgerichtet nach DIESEN DREI VERDÄCHTIGEN MERKMALEN:
-1. Prominente in absurden Situationen: Sind in dem Bild eindeutig hochrangige Politiker (wie Angela Merkel, Barack Obama, Wladimir Putin, Olaf Scholz) in absolut lächerlichen, unwahrscheinlichen oder peinlichen Szenen zu sehen (z.B. am Strand herumrennend, saufend)? Wenn ja -> EINDEUTIGER DEEPFAKE!
+1. Prominente in absurden Situationen: Prüfe GANZ GENAU die Gesichter! Handelt es sich um Angela Merkel? Wladimir Putin? Barack Obama? Olaf Scholz? Donald Trump? Ursula von der Leyen? Wenn eine dieser Personen in einer absurden, privaten oder lächerlichen Szene (z.B. Biertrinken am Stammtisch, am Strand rennen) zu sehen ist -> EINDEUTIGER DEEPFAKE!
 2. Logikfehler und Fotomontage: Fliegende Objekte, physikalisch unmögliche Beleuchtung, falsche Proportionen.
 3. Typische KI-Artefakte: Verschmolzene Finger an Händen, ineinanderlaufende Gesichter im Hintergrund, unleserlicher Schrifttest.
 
