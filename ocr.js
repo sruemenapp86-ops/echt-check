@@ -85,9 +85,9 @@ const EchtCheckOCR = (() => {
 
     const confidence = Math.round(result.data.confidence);
 
-    // Nur Wörter mit hoher Konfidenz behalten (>= 60%)
+    // Wörter mit Konfidenz >= 45% behalten (war 60% – zu streng für Logos, niedrige Auflösung)
     const goodWords = (result.data.words || []).filter(w =>
-      w.confidence >= 60 && w.text.trim().length >= 2 && /[a-zA-ZäöüÄÖÜ]/.test(w.text)
+      w.confidence >= 45 && w.text.trim().length >= 2 && /[a-zA-ZäöüÄÖÜ]/.test(w.text)
     );
 
     // Sauberer Text aus hochwertigen Wörtern
@@ -105,10 +105,10 @@ const EchtCheckOCR = (() => {
   // ─── Linguistische Analyse ────────────────────────────────────────────────
   function analyzeText(text, confidence = 100, wordCount = 0) {
     // Mindest-Qualitätsschwellen
-    if (!text || wordCount < 5 || confidence < 45) {
+    if (!text || wordCount < 3 || confidence < 35) {
       return {
         valid: false,
-        reason: wordCount < 5
+        reason: wordCount < 3
           ? `Zu wenig lesbarer Text erkannt (${wordCount} Wörter) – vermutlich kein Screenshot.`
           : `OCR-Konfidenz zu gering (${confidence}%) – Text nicht zuverlässig erkannt.`
       };
@@ -206,20 +206,27 @@ const EchtCheckOCR = (() => {
     }
 
     // 5. Quellenangaben prüfen
-    const hasSource = /https?:\/\/|www\.|laut\s+\w+\.de|quelle:|source:|studie\s+von|laut\s+(der|dem|einem)\s+\w+|nach\s+angaben/i.test(text);
-    if (!hasSource && text.length > 100) {
+    // Nur redaktionelle Quellen zählen – keine nackten URLs aus Social-Media-Posts!
+    // "https://facebook.com/..." ist KEINE journalistische Quelle.
+    const hasEditorialSource = /laut\s+\w+\.de|laut\s+\w+\.at|laut\s+\w+\.ch|quelle:|source:|studie\s+von|laut\s+(der|dem|einem|der)\s+\w+|nach\s+angaben\s+(von|der)|laut\s+(ard|zdf|bbc|dpa|reuters|ap\b)/i.test(text);
+    const hasAnyUrl = /https?:\/\/|www\./i.test(text);
+    const hasSource = hasEditorialSource; // nur redaktionell zählt
+
+    if (!hasSource && text.length > 80) {
       signals.push({
         level: 'warning',
-        title: 'Keine Quellenangabe',
-        detail: 'Der Text enthält keine nachprüfbare Quelle oder Link. Seriöse Meldungen belegen ihre Behauptungen.',
+        title: 'Keine nachprüfbare Quelle',
+        detail: 'Der Text enthält keine belegbare Quellenangabe (kein Medium, keine Studie). Seriöse Meldungen belegen ihre Behauptungen.',
         suspicion: 30
       });
       suspicionScore += 8;
     } else if (hasSource) {
+      // Redaktionelle Quelle vorhanden: kein positives Signal, aber Suspicion senken
+      suspicionScore = Math.max(0, suspicionScore - 5);
       signals.push({
-        level: 'safe',
-        title: 'Quellenangabe vorhanden',
-        detail: 'Der Text enthält mindestens eine Quellenreferenz – positives Signal.',
+        level: 'info',
+        title: 'Redaktionelle Quellenangabe',
+        detail: 'Der Text referenziert ein Nachrichtenmedium oder eine Studie – leicht positives Signal.',
         suspicion: 0
       });
     }
