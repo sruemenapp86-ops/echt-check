@@ -191,10 +191,22 @@ const EchtCheckUI = (() => {
     document.getElementById('hero-verdict').textContent = vt.label;
     document.getElementById('hero-summary').textContent = SUMMARY_TEXT[level];
 
-    // Score bar
+    // Score bar (animiert)
     const fill = document.getElementById('hero-score-fill');
     fill.className = `score-fill score-${level}`;
-    fill.style.width = avg + '%';
+    fill.style.width = '0%';
+    setTimeout(() => { fill.style.width = avg + '%'; }, 60);
+
+    // Banner-Dots → Ergebnis-Dots spiegeln
+    [['dot-p1','dot-p1b'],['dot-p2','dot-p2b'],['dot-p3','dot-p3b'],
+     ['dot-p4','dot-p4b'],['dot-p5','dot-p5b']].forEach(([src, dst]) => {
+      const s = document.getElementById(src);
+      const d = document.getElementById(dst);
+      if (s && d) d.className = s.className;
+    });
+
+    // Scroll zum Ergebnis
+    setTimeout(() => hero.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
   }
 
   // ─── States ────────────────────────────────────────────────────────────────
