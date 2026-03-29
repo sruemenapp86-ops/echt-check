@@ -282,7 +282,11 @@ Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
 
       // ─── NEU: Vollautomatischer Web Fact-Check Abgleich ───
       if (parsed.searchQuery) {
+        console.log('[FactCheck] KI-Suchbegriff generiert:', parsed.searchQuery);
         parsed.factchecks = await searchFactChecks(parsed.searchQuery);
+        console.log(`[FactCheck] ${parsed.factchecks.length} Treffer gefunden.`);
+      } else {
+        console.log('[FactCheck] Kein Suchbegriff von der KI geliefert.');
       }
 
       res.json({ type: 'text', model: LLM_TEXT_MODEL, ...parsed });
