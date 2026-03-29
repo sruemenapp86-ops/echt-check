@@ -410,19 +410,20 @@ Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
     } else if (type === 'image') {
       if (!imageBase64) throw new Error('imageBase64 fehlt');
 
-      const prompt = `Du bist ein forensischer Bildanalyst. Untersuche dieses Bild auf Anzeichen von Manipulation oder Fälschung.
+      const prompt = `Untersuche dieses Bild äußerst objektiv und neutral. Gehe standardmäßig davon aus, dass es sich um ein ECHTES, normales Kamera-Foto handelt (wie 99% aller Bilder).
+Das Bild wurde bereits von einem anderen System als echt eingestuft. Widersprich nur, wenn du extrem eindeutige Beweise für eine digitale Fotomontage oder KI-Generierung siehst.
 
-Prüfe auf:
-1. Fotomontage: Wurden Personen oder Objekte aus verschiedenen Fotos zusammengefügt?
-2. Inkonsistente Beleuchtung, Schatten oder Perspektive zwischen Bildteilen
-3. Unnatürliche Übergänge, weichgezeichnete Ränder um Objekte/Personen
-4. Nachträglich eingefügte Logos, Text oder Wasserzeichen
-5. Farbton-Unterschiede zwischen kombinierten Bildteilen
-6. Maßstabs- oder Proportionsfehler
+Suche nur nach offensichtlichen Fehlern:
+1. Fotomontage (Zusammengefügte Personen, schwebende Objekte, fehlende Körperteile)
+2. Offensichtlich physikalisch unmögliche Beleuchtung
+3. Typische KI-Artefakte (z.B. verschmolzene Finger, unsinniger Text im Hintergrund)
 
 Antworte NUR mit gültigem JSON ohne Markdown oder Codeblöcke:
 {"manipulated":true/false,"confidence":0-100,"verdict":"Authentisch oder Manipuliert","flags":[],"explanation":""}
-WICHTIG: Das Array 'flags' darf nur die tatsächlichen, im Bild gefundenen Fehler enthalten (sonst []). Die 'explanation' muss in 1-2 kurzen Sätzen deine gefundenen Mängel oder deine Unauffälligkeits-Entscheidung auf Deutsch begründen!`;
+WICHTIG:
+- Setze "manipulated": false und "flags": [], wenn das Bild wie ein ganz normales Kamera-Foto aussieht. Erfinde absolut keine Fehler!
+- Das Array 'flags' darf nur gefüllt werden, wenn du WIRKLICH Fehler findest.
+- 'explanation' soll in 1 Satz begründen, warum du es für einwandfrei oder manipuliert hältst.`;
 
       const r = await axios.post(`${OLLAMA_BASE}/api/generate`, {
         model: LLM_VISION_MODEL,
