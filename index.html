@@ -426,6 +426,10 @@
 </head>
 
 <body>
+  <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] max-w-[800px] max-h-[800px] rounded-full bg-cyan-900/20 mix-blend-screen filter blur-[100px] sm:blur-[150px]"></div>
+    <div class="absolute top-[40%] -right-[10%] w-[60vw] h-[60vw] max-w-[600px] max-h-[600px] rounded-full bg-violet-900/20 mix-blend-screen filter blur-[100px] sm:blur-[150px]"></div>
+  </div>
   <canvas id="particle-canvas"></canvas>
   <div class="relative z-10 min-h-screen">
 
@@ -447,7 +451,7 @@
       </div>
     </header>
 
-    <main class="max-w-3xl mx-auto px-4 py-10 space-y-5">
+    <main class="max-w-5xl mx-auto px-4 py-8 md:py-16 space-y-5">
 
       <!-- WELCOME STATE -->
       <div id="welcome-state">
@@ -479,7 +483,8 @@
             </p>
           </div>
           <div id="drop-zone"
-            class="glass border-2 border-dashed border-white/10 rounded-2xl p-14 text-center cursor-pointer hover:border-cyan-500/40 transition-all">
+            class="glass border-2 border-dashed border-white/10 rounded-3xl p-12 md:p-20 text-center cursor-pointer transition-all duration-300 hover:border-cyan-500/60 hover:bg-cyan-500/5 hover:shadow-[0_0_40px_rgba(6,182,212,0.15)] group relative overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div class="text-5xl mb-4">🔍</div>
             <p class="text-white font-semibold text-lg mb-2">Bild oder Screenshot hierher ziehen</p>
             <p class="text-slate-500 text-sm mb-4">oder klicken · oder <kbd
@@ -492,23 +497,23 @@
           </div>
 
           <!-- USP Feature Grid -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-            <div class="glass p-5 rounded-2xl border border-white/5 transition-all hover:border-cyan-500/30">
-              <div class="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-xl mb-3 border border-cyan-500/20">🔒</div>
-              <h3 class="text-white font-semibold text-sm mb-1">100% Offline & Lokal</h3>
-              <p class="text-slate-500 text-xs leading-relaxed">Keine Cloud. Keine Uploads in die USA. Alle Beweisfotos werden restlos nach der Analyse gelöscht. Absolute Diskretion nach DSGVO.</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mt-8 md:mt-12">
+            <div class="glass p-5 md:p-6 rounded-2xl border border-white/5 transition-all duration-300 hover:-translate-y-1 hover:border-cyan-500/30 hover:shadow-[0_10px_30px_rgba(6,182,212,0.1)] group">
+              <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center text-xl md:text-2xl mb-4 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">🔒</div>
+              <h3 class="text-white font-semibold text-sm md:text-base mb-2">100% Offline & Lokal</h3>
+              <p class="text-slate-400 text-xs md:text-sm leading-relaxed">Keine Cloud. Keine Uploads in die USA. Alle Beweisfotos werden restlos gelöscht. Absolute Diskretion nach DSGVO.</p>
             </div>
             
-            <div class="glass p-5 rounded-2xl border border-white/5 transition-all hover:border-violet-500/30">
-              <div class="w-10 h-10 rounded-xl bg-violet-500/10 flex items-center justify-center text-xl mb-3 border border-violet-500/20">🧠</div>
-              <h3 class="text-white font-semibold text-sm mb-1">6-Phasen KI-Forensik</h3>
-              <p class="text-slate-500 text-xs leading-relaxed">Kombiniert Fotografen-Tricks (Metadaten, Kompression) mit modernsten Deep-Learning Scannern (SwinV2) und OCR Text-Heuristik.</p>
+            <div class="glass p-5 md:p-6 rounded-2xl border border-white/5 transition-all duration-300 hover:-translate-y-1 hover:border-violet-500/30 hover:shadow-[0_10px_30px_rgba(139,92,246,0.1)] group">
+              <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-violet-500/10 flex items-center justify-center text-xl md:text-2xl mb-4 border border-violet-500/20 group-hover:bg-violet-500/20 transition-colors">🧠</div>
+              <h3 class="text-white font-semibold text-sm md:text-base mb-2">6-Phasen KI-Forensik</h3>
+              <p class="text-slate-400 text-xs md:text-sm leading-relaxed">Kombiniert Fotografen-Tricks (Metadaten, Kompression) mit modernsten Deep-Learning Scannern (SwinV2) und OCR.</p>
             </div>
             
-            <div class="glass p-5 rounded-2xl border border-white/5 transition-all hover:border-emerald-500/30">
-              <div class="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-xl mb-3 border border-emerald-500/20">🤖</div>
-              <h3 class="text-white font-semibold text-sm mb-1">KI-Sprachmodell an Bord</h3>
-              <p class="text-slate-500 text-xs leading-relaxed">Lokale semantische Überprüfung des Inhalts durch LLaVA & Gemma2. Erkennt absurde Szenerien und entlarvt Text-Hetze zielsicher.</p>
+            <div class="glass p-5 md:p-6 rounded-2xl border border-white/5 transition-all duration-300 hover:-translate-y-1 hover:border-emerald-500/30 hover:shadow-[0_10px_30px_rgba(16,185,129,0.1)] group">
+              <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center text-xl md:text-2xl mb-4 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">🤖</div>
+              <h3 class="text-white font-semibold text-sm md:text-base mb-2">KI-Sprachmodell an Bord</h3>
+              <p class="text-slate-400 text-xs md:text-sm leading-relaxed">Semantische Überprüfung durch LLaVA & Gemma2. Erkennt absurde Szenerien und entlarvt Text-Hetze zielsicher.</p>
             </div>
           </div>
         </div>
