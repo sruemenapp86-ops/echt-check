@@ -136,7 +136,7 @@ const EchtCheckUI = (() => {
           _p4IsReal = (r.method && r.method !== 'statistical_fallback');
           const lvl = (r.score ?? 50) >= 65 ? 'safe' : (r.score ?? 50) >= 40 ? 'warning' : 'danger';
           _setDot(['dot-p4'], lvl);
-          _setBadge('p4-badge', lvl, lvl === 'safe' ? 'Wahrscheinlich echt' : lvl === 'danger' ? 'Wahrscheinlich KI' : 'Nicht eindeutig');
+          _setBadge('p4-badge', lvl, lvl === 'safe' ? 'Keine KI-Generierung' : lvl === 'danger' ? 'KI-generiert' : 'KI-Generierung möglich');
         } else {
           document.getElementById('phase4-offline').classList.remove('hidden');
           _setDot(['dot-p4'], 'warning');
@@ -229,13 +229,27 @@ const EchtCheckUI = (() => {
     const p4ShouldDouble = phaseScores.p4 !== null
       && phaseScores.p5 === null
       && _p4IsReal;
-    if (p4ShouldDouble) weighted.push(phaseScores.p4);
-    if (phaseScores.p6 !== null) weighted.push(phaseScores.p6); // p6 extra Gewicht
     if (!weighted.length) return; // NaN-Guard
-    const avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
+    let avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
     if (isNaN(avg)) return; // NaN-Guard
+
+    // Veto-Regel (Vorsichtsprinzip): Wenn Tiefenanalyse (P6) oder OCR (P5) 
+    // rote Flaggen werfen (score <= 40), darf das Gesamt-Bild maximal als "manipuliert" gelten!
+    const minCritical = Math.min(phaseScores.p6 ?? 100, phaseScores.p5 ?? 100);
+    if (minCritical <= 40) {
+      avg = Math.min(avg, 40); // Kappung auf max. 40 (danger)
+    }
+
     const level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
-    const vt = VERDICT_TEXT[level];
+    let vt = VERDICT_TEXT[level];
+    
+    // Wenn das Veto gegriffen hat, scharfen Text wählen
+    if (minCritical <= 40 && avg <= 40) {
+      vt = {
+        title: 'Manipulation erkannt',
+        desc: 'Die KI-Tiefenanalyse (oder Texterkennung) hat starke Hinweise auf Bildmanipulation, Kontext-Fälschung oder problematische Inhalte gefunden.'
+      };
+    }
 
     // Hero-Card styling updaten
     const hero = document.getElementById('result-hero');

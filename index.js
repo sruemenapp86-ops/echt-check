@@ -264,8 +264,9 @@ Prüfe auf:
 5. Farbton-Unterschiede zwischen kombinierten Bildteilen
 6. Maßstabs- oder Proportionsfehler
 
-Antworte NUR mit gültigem JSON ohne Markdown:
-{"manipulated":true/false,"confidence":0-100,"verdict":"Wahrscheinlich authentisch oder Möglicherweise manipuliert oder Wahrscheinlich manipuliert","flags":["Beschreibung Auffälligkeit 1"],"explanation":"1-2 Sätze auf Deutsch was du erkannt hast"}`;
+Antworte NUR mit gültigem JSON ohne Markdown oder Codeblöcke:
+{"manipulated":true/false,"confidence":0-100,"verdict":"Authentisch oder Manipuliert","flags":["Fehler 1 (kurz)", "Fehler 2 (kurz)"],"explanation":"1-2 Sätze auf Deutsch was du erkannt hast"}
+WICHTIG: Das Array 'flags' darf nur die tatsächlichen, im Bild gefundenen Fehler enthalten. Wenn keine Fehler da sind, antworte "flags":[]`;
 
       const r = await axios.post(`${OLLAMA_BASE}/api/generate`, {
         model: LLM_VISION_MODEL,
