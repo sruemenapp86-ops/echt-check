@@ -284,8 +284,9 @@ const EchtCheckUI = (() => {
              }
           };
 
+          // LLM-Analysen (Mit Übergabe des Vor-Scores von Phase 4!)
           const [imgRes, txtRes] = await Promise.allSettled([
-            llmStatus.visionReady ? EchtCheckAPI.analyzeLLMImage(file, _queueUpdate('Bild-KI')) : Promise.resolve(null),
+            llmStatus.visionReady ? EchtCheckAPI.analyzeLLMImage(file, _queueUpdate('Bild-KI'), phaseScores.p4) : Promise.resolve(null),
             (llmStatus.textReady && _ocrText && _ocrText.length >= 20)
               ? EchtCheckAPI.analyzeLLMText(_ocrText, _queueUpdate('Text-KI'))
               : Promise.resolve(null)

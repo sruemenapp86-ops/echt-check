@@ -352,14 +352,14 @@ async function searchFactChecks(query) {
 }
 
 app.post('/analyze/llm', async (req, res) => {
-  const { type, text, imageBase64, mimeType } = req.body || {};
+  const { type, text, imageBase64, mimeType, preScore } = req.body || {};
   if (!type || !['text','image'].includes(type)) return res.status(400).json({ error: 'type muss "text" oder "image" sein' });
 
   const online = await checkOllamaOnline();
   if (!online) return res.status(503).json({ error: 'Ollama nicht erreichbar – bitte starten', offline: true });
 
   const jobId = crypto.randomUUID();
-  llmJobQueue.push({ id: jobId, type, text, imageBase64, mimeType });
+  llmJobQueue.push({ id: jobId, type, text, imageBase64, mimeType, preScore: preScore ?? 50 });
   
   // Worker triggern (arbeitet nur, wenn nicht besetzt)
   processLlmQueue();
@@ -368,7 +368,7 @@ app.post('/analyze/llm', async (req, res) => {
 });
 
 // Die eigentliche Arbeitslast, die nur sequenziell aufgerufen wird
-async function _executeLlmAnalysis({ type, text, imageBase64 }) {
+async function _executeLlmAnalysis({ type, text, imageBase64, preScore }) {
   try {
     if (type === 'text') {
       if (!text || text.length < 10) throw new Error('Text zu kurz');
@@ -410,19 +410,24 @@ Antworte NUR mit gültigem JSON ohne Markdown-Formatierung:
     } else if (type === 'image') {
       if (!imageBase64) throw new Error('imageBase64 fehlt');
 
-      const prompt = `Untersuche dieses Bild äußerst objektiv und neutral. Gehe standardmäßig davon aus, dass es sich um ein ECHTES, normales Kamera-Foto handelt (wie 99% aller Bilder).
-Das Bild wurde bereits von einem anderen System als echt eingestuft. Widersprich nur, wenn du extrem eindeutige Beweise für eine digitale Fotomontage oder KI-Generierung siehst.
+      const isSuspicious = preScore <= 55;
+      const contextInstruction = isSuspicious 
+        ? `ACHTUNG SYSTEM-ALARM: Unser statistischer Scanner hat dieses Bild bereits als potenziellen DEEPFAKE eingestuft (Score: ${preScore}/100). Du musst jetzt VERSTÄRKT nach KI-Artefakten (verformte Gesichter, typische Montagefehler, unsinniger Hintergrund) suchen!`
+        : `HINWEIS: Unser statistischer Scanner stuft dieses Bild als extrem sicher und authentisch ein (Score: ${preScore}/100, Wahrscheinlich ein normales Kamerafoto). Widersprich dem Scanner nur, wenn du zweifelsfrei digitale Bildmanipulation (Fotomontage) erkennst!`;
 
-Suche nur nach offensichtlichen Fehlern:
+      const prompt = `Untersuche dieses Bild äußerst objektiv. 
+${contextInstruction}
+
+Suche zielgerichtet nach:
 1. Fotomontage (Zusammengefügte Personen, schwebende Objekte, fehlende Körperteile)
 2. Offensichtlich physikalisch unmögliche Beleuchtung
-3. Typische KI-Artefakte (z.B. verschmolzene Finger, unsinniger Text im Hintergrund)
+3. Typische KI-Artefakte (z.B. verschmolzene Finger, unsinnige Details)
 
 Antworte NUR mit gültigem JSON ohne Markdown oder Codeblöcke:
 {"manipulated":true/false,"confidence":0-100,"verdict":"Authentisch oder Manipuliert","flags":[],"explanation":""}
 WICHTIG:
-- Setze "manipulated": false und "flags": [], wenn das Bild wie ein ganz normales Kamera-Foto aussieht. Erfinde absolut keine Fehler!
-- Das Array 'flags' darf nur gefüllt werden, wenn du WIRKLICH Fehler findest.
+- Setze "manipulated": false und "flags": [], wenn das Bild völlig normal aussieht. Erfinde keine Fehler.
+- Das Array 'flags' darf nur gefüllt werden, wenn 'manipulated' true ist.
 - 'explanation' soll in 1 Satz begründen, warum du es für einwandfrei oder manipuliert hältst.`;
 
       const r = await axios.post(`${OLLAMA_BASE}/api/generate`, {

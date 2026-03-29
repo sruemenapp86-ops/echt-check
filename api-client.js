@@ -117,7 +117,7 @@ const EchtCheckAPI = (() => {
     }
   }
 
-  async function analyzeLLMImage(file, onProgress) {
+  async function analyzeLLMImage(file, onProgress, preScore = 50) {
     try {
       // Bild Client-seitig verkleinern um 413 Payload Too Large zu verhindern
       const base64 = await new Promise((resolve, reject) => {
@@ -157,7 +157,7 @@ const EchtCheckAPI = (() => {
       const initR = await fetch(`${BASE}/analyze/llm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'image', imageBase64: base64, mimeType: 'image/jpeg' }),
+        body: JSON.stringify({ type: 'image', imageBase64: base64, mimeType: 'image/jpeg', preScore }),
         signal: AbortSignal.timeout(15000) // Ticket holen geht schnell
       });
       const data = await initR.json();
