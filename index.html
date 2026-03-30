@@ -471,15 +471,14 @@
         <!-- Bild-Tab -->
         <div id="tab-panel-image">
           <div class="text-center mb-8">
-            <div
-              class="hidden md:inline-block bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
-              🔎 Metadaten · ELA · Frequenzanalyse · OCR · KI-Analyse (Backend+Lokale LLM)
+            <div class="inline-block bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs md:text-sm font-semibold px-4 py-1.5 rounded-full mb-5">
+              🚀 Live Web-Faktencheck & KI Forensik-Pipeline
             </div>
             <h1 class="text-5xl font-extrabold text-white mb-4" style="font-size:clamp(1.7rem,8vw,3rem)">Ist das Bild
               oder die Meldung <span class="text-cyan-400">echt</span>?</h1>
             <p class="hidden md:block text-slate-400 max-w-lg mx-auto leading-relaxed">
-              Lade ein Bild oder Screenshot (z.B. Facebook-Post) hoch oder füge es mit <kbd
-                class="bg-white/10 px-1.5 py-0.5 rounded text-xs">Strg+V</kbd> ein.
+              Lade ein Bild oder Screenshot (z.B. Nachrichten-Post) hoch oder füge es mit <kbd
+                class="bg-white/10 px-1.5 py-0.5 rounded text-xs">Strg+V</kbd> ein. Das System gleicht es in Echtzeit mit weltweiten Pressemeldungen ab.
             </p>
           </div>
           <div id="drop-zone"
@@ -654,7 +653,7 @@
           <div id="hero-analyzing-banner" class="flex items-center gap-4 mb-4">
             <div class="spinner w-6 h-6 flex-shrink-0"></div>
             <div class="flex-1">
-              <p class="text-sm text-white font-semibold">Analyse läuft…</p>
+              <p id="loading-spinner-text" class="text-sm text-white font-semibold">Starte Analyse-Pipeline…</p>
               <div class="flex flex-wrap gap-x-3 gap-y-1 mt-1">
                 <span class="text-xs text-slate-500 flex items-center gap-1"><span id="dot-p1"
                     class="phase-dot phase-dot-loading" style="width:7px;height:7px"></span>Metadaten</span>
@@ -1027,14 +1026,8 @@
       Zero-Trace · Keine Cookies · Keine Tracker
     </footer>
 
-    <!-- Gamification / Live Ticker -->
-    <div class="fixed bottom-0 w-full bg-[#0a0f1a]/80 backdrop-blur-xl border-t border-white/10 py-2.5 px-4 z-50">
-      <div class="max-w-5xl mx-auto flex items-center gap-3 justify-center md:justify-start">
-        <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]"></div>
-        <p id="live-ticker-text" class="text-[11px] md:text-xs font-mono tracking-widest text-cyan-400/80 transition-opacity duration-500 truncate max-w-full">
-          System läuft. Warte auf eingehende Prüfungen...
-        </p>
-      </div>
+    <!-- Gamification / Live Ticker (Deaktiviert nach User-Wunsch) -->
+    <div class="hidden">
     </div>
 
   </div>

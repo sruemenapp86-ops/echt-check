@@ -585,7 +585,8 @@ const EchtCheckUI = (() => {
       else shareBtn.classList.add('hidden');
     }
 
-    setTimeout(() => hero.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+    if (window._loadingTextInterval) clearInterval(window._loadingTextInterval);
+    setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80);
   }
 
   function _showPhase6Results(imgData, txtData) {
@@ -689,6 +690,25 @@ const EchtCheckUI = (() => {
   function _showInitialResult(result, file) {
     document.getElementById('loading-state').classList.add('hidden');
     document.getElementById('result-state').classList.remove('hidden');
+
+    if (window._loadingTextInterval) clearInterval(window._loadingTextInterval);
+    const loadingTexts = [
+      "Extrahiere Datei-Metadaten...",
+      "Analysiere Pixel auf KI-Artefakte (SwinV2)...",
+      "Führe Live-Web-Recherche durch...",
+      "Extrahiere und bewerte Textbestandteile...",
+      "Vergleiche Faktenlage mit KI-Befund...",
+      "Erstelle Abschlussbericht..."
+    ];
+    let lidx = 0;
+    const ltextEl = document.getElementById('loading-spinner-text');
+    if(ltextEl) {
+      ltextEl.textContent = "Starte Forensik-Pipeline...";
+      window._loadingTextInterval = setInterval(() => {
+        ltextEl.textContent = loadingTexts[lidx % loadingTexts.length];
+        lidx++;
+      }, 2000);
+    }
 
     if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
     currentObjectUrl = URL.createObjectURL(file);
