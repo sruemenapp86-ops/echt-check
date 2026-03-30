@@ -488,11 +488,18 @@ const EchtCheckUI = (() => {
     let avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
     if (isNaN(avg)) return;
 
-    const minCritical = Math.min(phaseScores.p6 ?? 100, phaseScores.p5 ?? 100);
+    // Veto-Logik: Nur wenn die LLM-KI EXPLIZIT manipuliert/verdächtig meldet UND Score niedrig ist.
+    // OCR-Heuristiken (Großbuchstaben zählen etc) dürfen das Verdict NICHT alleine überschreiben.
+    const llmExplicitlyFlagged = (imgData && imgData.manipulated === true) || (txtData && txtData.suspicious === true);
+    const p6Critical = (phaseScores.p6 ?? 100) <= 40;
     let vetoTriggered = false;
-    if (minCritical <= 40) {
+    if (llmExplicitlyFlagged && p6Critical) {
       avg = Math.min(avg, 39);
       vetoTriggered = true;
+    }
+    // Wenn LLM klar "kein Problem" sagt, minimum auf warning setzen (nie Danger nur durch Pixel-Scanner)
+    if (!llmExplicitlyFlagged && (imgData || txtData)) {
+      avg = Math.max(avg, 45); // mindestens "warning"-Zone, nicht danger
     }
 
     const level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
