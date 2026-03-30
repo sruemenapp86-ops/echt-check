@@ -749,12 +749,13 @@ const EchtCheckUI = (() => {
 
   function _showPhase4Results(r) {
     const score = r.score ?? 50;
+    const fakeScore = 100 - score;
     const level = score >= 65 ? 'safe' : score >= 40 ? 'warning' : 'danger';
     const fill = document.getElementById('phase4-score-fill');
     fill.className = `score-fill score-${level}`;
     fill.style.width = '0%';
-    setTimeout(() => { fill.style.width = score + '%'; }, 100);
-    document.getElementById('phase4-score-text').textContent = `${score} / 100`;
+    setTimeout(() => { fill.style.width = fakeScore + '%'; }, 100);
+    document.getElementById('phase4-score-text').textContent = `KI-Wahrscheinlichkeit: ${fakeScore}%`;
     const methodLabel = r.method === 'onnx_model'
       ? '🤖 SwinV2-Modell auf GPU (lokal, keine Datenweitergabe)'
       : r.method === 'community_shield'
@@ -818,9 +819,11 @@ const EchtCheckUI = (() => {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     }
-    document.getElementById('hero-score').textContent = '–';
+    const hs = document.getElementById('hero-score');
+    if (hs) hs.textContent = '–';
     document.getElementById('hero-verdict').textContent = 'Wird analysiert…';
-    document.getElementById('hero-score-fill').style.width = '0%';
+    const hsf = document.getElementById('hero-score-fill');
+    if (hsf) hsf.style.width = '0%';
     document.getElementById('welcome-state').classList.remove('hidden');
     if (currentObjectUrl) { URL.revokeObjectURL(currentObjectUrl); currentObjectUrl = null; }
     phaseScores = { p1: null, p2: null, p3: null, p4: null, p5: null, p6: null };
