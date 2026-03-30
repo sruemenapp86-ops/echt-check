@@ -912,10 +912,18 @@
                   <div id="llm-factcheck-links" class="space-y-3 mt-2"></div>
                 </div>
 
+                <!-- Live News-Radar (RAG-Kontext) -->
+                <div id="llm-news-radar" class="hidden space-y-2 mt-4 p-4 rounded-xl border border-cyan-500/30 bg-cyan-900/20">
+                  <p class="text-xs font-semibold text-cyan-400 uppercase tracking-widest flex items-center gap-2">🌍 LIVE NEWS RADAR (RAG-Kontext)</p>
+                  <p class="text-[0.65rem] text-cyan-200/60 mb-1">Die KI hat diese Nachrichten bei ihrer Analyse berücksichtigt:</p>
+                  <pre id="llm-news-radar-content" class="text-[0.6rem] text-cyan-100/50 leading-relaxed font-mono overflow-y-auto max-h-28 p-2 bg-black/30 rounded whitespace-pre-wrap"></pre>
+                </div>
+
                 <!-- Kein Text erkannt -->
                 <div id="llm-no-text" class="hidden mt-2">
                   <p class="text-xs text-slate-600">Kein Text für KI-Inhaltsanalyse im Bild gefunden.</p>
                 </div>
+
 
                 <p class="text-xs text-slate-600 mt-4">💡 <strong class="text-slate-500">Was macht die
                     KI-Gesamtanalyse?</strong><br>
@@ -1033,13 +1041,13 @@
 
   <script src="https://cdn.jsdelivr.net/npm/exif-js@2.3.0/exif.min.js"></script>
   <script src="https://unpkg.com/tesseract.js@4/dist/tesseract.min.js"></script>
-  <script src="engine.js?v=3.2"></script>
-  <script src="scanner.js?v=3.2"></script>
-  <script src="ai-detector.js?v=3.2"></script>
-  <script src="ocr.js?v=3.2"></script>
-  <script src="url-checker.js?v=3.2"></script>
-  <script src="api-client.js?v=3.2"></script>
-  <script src="ui.js?v=3.2"></script>
+  <script src="engine.js?v=3.3"></script>
+  <script src="scanner.js?v=3.3"></script>
+  <script src="ai-detector.js?v=3.3"></script>
+  <script src="ocr.js?v=3.3"></script>
+  <script src="url-checker.js?v=3.3"></script>
+  <script src="api-client.js?v=3.3"></script>
+  <script src="ui.js?v=3.3"></script>
 </body>
 
 </html>
