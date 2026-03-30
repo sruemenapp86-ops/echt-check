@@ -172,8 +172,8 @@ const EchtCheckUI = (() => {
 
   // ─── Status Text Helper ────────────────────────────────────────────────────
   function _setHeroStatus(text) {
-    const el = document.getElementById('hero-analyzing-subtitle');
-    if (el) el.textContent = '> ' + text;
+    const el = document.getElementById('loading-spinner-text');
+    if (el) el.textContent = text;
   }
 
   // ─── Input-Handler ─────────────────────────────────────────────────────────
@@ -395,22 +395,8 @@ const EchtCheckUI = (() => {
           _setDot(['dot-p6b'], 'warning');
           _setBadge('p6-badge', 'warning', 'Modell fehlt');
         } else {
-          const aiSteps = [
-             "Deep-Learning Forensik rechnet auf lokaler GPU...",
-             "Suche nach harten Kanten und Fotomontagen...",
-             "Überprüfe Schattenfall und Beleuchtung auf Unstimmigkeiten...",
-             "Vergleiche Bildsemantik mit bekannten Fake-Mustern...",
-             "Analysiere erkannte Texte auf Desinformation und Hetze...",
-             "Lokale LLMs konsolidieren die Metadaten..."
-          ];
-          let aiStepIdx = 0;
-          _setHeroStatus(aiSteps[0]);
+          _setHeroStatus("Befrage neuronale Netze zur finalen Bild-/Textbewertung (dies kann etwas dauern)...");
           let isQueueing = false;
-          _statusInterval = setInterval(() => {
-             if (isQueueing) return; // Wenn Queue-Polling übernimmt, Hype-Slogans pausieren
-             aiStepIdx = (aiStepIdx + 1) % aiSteps.length;
-             _setHeroStatus(aiSteps[aiStepIdx]);
-          }, 4500);
 
           const _queueUpdate = (type) => (pos, est) => {
              isQueueing = true;
@@ -692,22 +678,9 @@ const EchtCheckUI = (() => {
     document.getElementById('result-state').classList.remove('hidden');
 
     if (window._loadingTextInterval) clearInterval(window._loadingTextInterval);
-    const loadingTexts = [
-      "Extrahiere Datei-Metadaten...",
-      "Analysiere Pixel auf KI-Artefakte (SwinV2)...",
-      "Führe Live-Web-Recherche durch...",
-      "Extrahiere und bewerte Textbestandteile...",
-      "Vergleiche Faktenlage mit KI-Befund...",
-      "Erstelle Abschlussbericht..."
-    ];
-    let lidx = 0;
     const ltextEl = document.getElementById('loading-spinner-text');
     if(ltextEl) {
       ltextEl.textContent = "Starte Forensik-Pipeline...";
-      window._loadingTextInterval = setInterval(() => {
-        ltextEl.textContent = loadingTexts[lidx % loadingTexts.length];
-        lidx++;
-      }, 2000);
     }
 
     if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
