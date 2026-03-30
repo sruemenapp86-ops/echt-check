@@ -622,11 +622,7 @@ const EchtCheckUI = (() => {
       });
     }
 
-    const contextStr = (imgData && imgData.newsContext) || (txtData && txtData.newsContext) || null;
-    if (contextStr) {
-      document.getElementById('llm-news-radar').classList.remove('hidden');
-      document.getElementById('llm-news-radar-content').innerText = contextStr;
-    }
+    // News-Radar nur intern (KI-Hintergrundwissen), wird dem User NICHT gezeigt.
   }
 
   function _showLoading(file) {
