@@ -600,23 +600,32 @@ const EchtCheckUI = (() => {
         flagsEl.innerHTML = `<div class="glass p-2 rounded-lg border border-emerald-700/30 text-xs text-emerald-400">✅ Keine problematischen Inhalte erkannt</div>`;
       }
       document.getElementById('llm-text-summary').textContent = txtData.summary || '';
-
-      // ─── NEU: Faktencheck-Links rendern ───
-      if (txtData.factchecks && txtData.factchecks.length > 0) {
-        document.getElementById('llm-factcheck-result').classList.remove('hidden');
-        const fcEl = document.getElementById('llm-factcheck-links');
-        fcEl.innerHTML = '';
-        txtData.factchecks.forEach(fc => {
-          fcEl.innerHTML += `<a href="${fc.url}" target="_blank" class="block group glass p-3 rounded-xl border border-rose-500/20 hover:border-rose-400 transition-all hover:-translate-y-0.5 shadow-lg">
-            <h4 class="text-sm font-bold text-rose-300 group-hover:text-rose-200 mb-1 leading-snug">${fc.title}</h4>
-            <p class="text-xs text-rose-200/70 line-clamp-2">${fc.snippet}</p>
-            <div class="text-[0.65rem] text-rose-500 mt-2 font-mono break-all opacity-80">${fc.url}</div>
-          </a>`;
-        });
-      }
-
     } else if (imgData && !txtData) {
       document.getElementById('llm-no-text').classList.remove('hidden');
+    }
+
+    // ─── NEU: Faktencheck-Links & News-Radar IMMER rendern (unabhängig von Text) ───
+    const allFactchecks = [];
+    if (txtData && txtData.factchecks) allFactchecks.push(...txtData.factchecks);
+    if (imgData && imgData.factchecks) allFactchecks.push(...imgData.factchecks);
+    
+    if (allFactchecks.length > 0) {
+      document.getElementById('llm-factcheck-result').classList.remove('hidden');
+      const fcEl = document.getElementById('llm-factcheck-links');
+      fcEl.innerHTML = '';
+      allFactchecks.forEach(fc => {
+        fcEl.innerHTML += `<a href="${fc.url}" target="_blank" class="block group glass p-3 rounded-xl border border-rose-500/20 hover:border-rose-400 transition-all hover:-translate-y-0.5 shadow-lg">
+          <h4 class="text-sm font-bold text-rose-300 group-hover:text-rose-200 mb-1 leading-snug">${fc.title}</h4>
+          <p class="text-xs text-rose-200/70 line-clamp-2">${fc.snippet}</p>
+          <div class="text-[0.65rem] text-rose-500 mt-2 font-mono break-all opacity-80">${fc.url}</div>
+        </a>`;
+      });
+    }
+
+    const contextStr = (imgData && imgData.newsContext) || (txtData && txtData.newsContext) || null;
+    if (contextStr) {
+      document.getElementById('llm-news-radar').classList.remove('hidden');
+      document.getElementById('llm-news-radar-content').innerText = contextStr;
     }
   }
 
@@ -815,7 +824,7 @@ const EchtCheckUI = (() => {
       const el = document.getElementById(id);
       if (el) { el.className = 'badge badge-muted ml-2'; el.textContent = 'läuft…'; }
     }
-    for (const id of ['llm-offline','llm-model-missing','llm-image-result','llm-text-result','llm-no-text','llm-factcheck-result']) {
+    for (const id of ['llm-offline','llm-model-missing','llm-image-result','llm-text-result','llm-no-text','llm-factcheck-result','llm-news-radar']) {
       const el = document.getElementById(id);
       if (el) el.classList.add('hidden');
     }
