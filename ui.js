@@ -837,6 +837,8 @@ const EchtCheckUI = (() => {
       ? '🤖 SwinV2-Modell auf GPU (lokal, keine Datenweitergabe)'
       : r.method === 'community_shield'
       ? '🚨 COMMUNITY SCHILD (Direkter Datenbank-Treffer)'
+      : r.method === 'c2pa_watermark'
+      ? '🛡️ C2PA (Content Credentials) Wasserzeichen gefunden!'
       : '📊 Statistisches Fallback-Modell';
     document.getElementById('phase4-method').textContent = methodLabel;
     document.getElementById('phase4-result').classList.remove('hidden');
