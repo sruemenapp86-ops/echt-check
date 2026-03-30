@@ -439,13 +439,19 @@ const EchtCheckUI = (() => {
 
           let p6scores = [];
           if (imgData) {
-            const imgScore = imgData.manipulated ? Math.min(imgData.confidence ?? 50, 40)
-                           : Math.max(60, 100 - (imgData.confidence ?? 50));
+            // Wenn Vision-KI EXPLIZIT nicht manipuliert sagt → 75 (sicher grün)
+            // Wenn sie manipuliert sagt → nehme Confidence als Gefährlichkeit
+            const imgScore = imgData.manipulated
+              ? Math.min(imgData.confidence ?? 60, 35)   // manipuliert → Danger
+              : Math.max(75, 100 - (imgData.confidence ?? 20)); // echt → safe Bereich
             p6scores.push(imgScore);
           }
           if (txtData) {
-            let txtScore = 100 - (txtData.score ?? 50);
-            if (txtData.suspicious) txtScore = Math.min(txtScore, 40);
+            // Wenn Text-KI EXPLIZIT not suspicious sagt → 75 (sicher grün)
+            // Score-Feld ist ambigious im LLM, daher: primär auf suspicious-Flag verlassen
+            const txtScore = txtData.suspicious
+              ? Math.min(40, 100 - (txtData.score ?? 50))  // verdächtig → niedrig
+              : Math.max(75, 100 - (txtData.score ?? 10)); // unauffällig → hoch
             p6scores.push(txtScore);
           }
           if (p6scores.length) {
