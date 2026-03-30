@@ -519,7 +519,8 @@ const EchtCheckUI = (() => {
     const verifyCount = allFactchecks.filter(fc => fc.type === 'verify').length;
     const isVerifiedByPress = verifyCount >= 2;
 
-    const llmExplicitlyFlagged = (imgData && imgData.manipulated === true) || (txtData && txtData.suspicious === true);
+    const swinV2Veto = !!(phaseScores.p4 !== undefined && phaseScores.p4 <= 5);
+    const llmExplicitlyFlagged = (imgData && imgData.manipulated === true) || (txtData && txtData.suspicious === true) || swinV2Veto;
     const p6Critical = (phaseScores.p6 ?? 100) <= 40;
     
     let vetoTriggered = false;
