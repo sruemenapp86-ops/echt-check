@@ -480,6 +480,38 @@ const EchtCheckUI = (() => {
     let avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
     if (isNaN(avg)) return;
 
+    // ─── COMMUNITY SHIELD BYPASS: ───
+    if (txtData && txtData.method === 'community_shield') {
+      const hero = document.getElementById('result-hero');
+      hero.className = `glass p-5 border-2 verdict-hero-danger`;
+      document.getElementById('hero-analyzing-banner').classList.add('hidden');
+      document.getElementById('hero-result-block').classList.remove('hidden');
+      
+      const imgResult = document.getElementById('image-preview-result');
+      const imgOrig   = document.getElementById('image-preview');
+      imgResult.src = imgOrig.src; imgResult.alt = imgOrig.alt;
+
+      document.getElementById('hero-verdict').textContent = '🚨 COMMUNITY-SCHILD: BEKANNTER FAKE';
+      
+      const summaryEl = document.getElementById('hero-summary');
+      summaryEl.innerHTML = '<b>Abbruch der weiteren KI-Analysen:</b> Dieses Bild befindet sich bereits in der Datenbank für bekannte Fakes. Es wurde von der Community gemeldet oder maschinell als Manipulation entlarvt.';
+      summaryEl.className = `text-sm md:text-base leading-relaxed border-l-4 pl-4 py-1 border-red-500 text-red-100`;
+
+      [['dot-p1','dot-p1b'],['dot-p2','dot-p2b'],['dot-p3','dot-p3b'],
+       ['dot-p4','dot-p4b'],['dot-p5','dot-p5b']].forEach(([src, dst]) => {
+        const s = document.getElementById(src);
+        const d = document.getElementById(dst);
+        if (s && d) d.className = s.className;
+      });
+
+      const shareBtn = document.getElementById('share-busted-btn');
+      if (shareBtn) shareBtn.classList.remove('hidden');
+
+      if (window._loadingTextInterval) clearInterval(window._loadingTextInterval);
+      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 80);
+      return;
+    }
+
     // --- NEU: Zuerst echte Fakten checken (Web-Search Veto) ---
     const allFactchecks = [];
     if (txtData && txtData.factchecks) allFactchecks.push(...txtData.factchecks);
