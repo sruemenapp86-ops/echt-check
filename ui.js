@@ -624,13 +624,29 @@ const EchtCheckUI = (() => {
     
     if (allFactchecks.length > 0) {
       document.getElementById('llm-factcheck-result').classList.remove('hidden');
+      // Box-Titel anpassen je nach Inhalt
+      const hasVerify = allFactchecks.some(fc => fc.type === 'verify');
+      const hasDebunk = allFactchecks.some(fc => fc.type === 'debunk');
+      const titleEl = document.querySelector('#llm-factcheck-result > p');
+      if (titleEl) {
+        if (hasVerify && !hasDebunk) titleEl.textContent = '🔗 QUELLEN-VERIFIKATION (Bestätigende Presseartikel)';
+        else if (hasDebunk && !hasVerify) titleEl.textContent = '🚨 FAKTENCHECK-QUELLEN (Entlarvende Artikel)';
+        else titleEl.textContent = '🌐 WEB-RECHERCHE (Quellen & Faktencheck)';
+      }
       const fcEl = document.getElementById('llm-factcheck-links');
       fcEl.innerHTML = '';
       allFactchecks.forEach(fc => {
-        fcEl.innerHTML += `<a href="${fc.url}" target="_blank" class="block group glass p-3 rounded-xl border border-rose-500/20 hover:border-rose-400 transition-all hover:-translate-y-0.5 shadow-lg">
-          <h4 class="text-sm font-bold text-rose-300 group-hover:text-rose-200 mb-1 leading-snug">${fc.title}</h4>
-          <p class="text-xs text-rose-200/70 line-clamp-2">${fc.snippet}</p>
-          <div class="text-[0.65rem] text-rose-500 mt-2 font-mono break-all opacity-80">${fc.url}</div>
+        const isVerify = fc.type === 'verify';
+        const borderCls = isVerify ? 'border-emerald-500/30 hover:border-emerald-400' : 'border-rose-500/30 hover:border-rose-400';
+        const titleCls  = isVerify ? 'text-emerald-300 group-hover:text-emerald-200' : 'text-rose-300 group-hover:text-rose-200';
+        const snippetCls = isVerify ? 'text-emerald-200/70' : 'text-rose-200/70';
+        const urlCls    = isVerify ? 'text-emerald-600' : 'text-rose-500';
+        const label     = isVerify ? '✅ Bestätigende Quelle' : '🚨 Faktencheck';
+        fcEl.innerHTML += `<a href="${fc.url}" target="_blank" class="block group glass p-3 rounded-xl border ${borderCls} transition-all hover:-translate-y-0.5 shadow-lg">
+          <div class="text-[0.6rem] font-bold uppercase tracking-widest mb-1 ${urlCls}">${label}</div>
+          <h4 class="text-sm font-bold ${titleCls} mb-1 leading-snug">${fc.title}</h4>
+          <p class="text-xs ${snippetCls} line-clamp-2">${fc.snippet}</p>
+          <div class="text-[0.65rem] ${urlCls} mt-2 font-mono break-all opacity-70">${fc.url}</div>
         </a>`;
       });
     }
