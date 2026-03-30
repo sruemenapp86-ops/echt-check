@@ -494,25 +494,46 @@ const EchtCheckUI = (() => {
     let avg = Math.round(weighted.reduce((a, b) => a + b, 0) / weighted.length);
     if (isNaN(avg)) return;
 
-    // Veto-Logik: Nur wenn die LLM-KI EXPLIZIT manipuliert/verdächtig meldet UND Score niedrig ist.
-    // OCR-Heuristiken (Großbuchstaben zählen etc) dürfen das Verdict NICHT alleine überschreiben.
+    // --- NEU: Zuerst echte Fakten checken (Web-Search Veto) ---
+    const allFactchecks = [];
+    if (txtData && txtData.factchecks) allFactchecks.push(...txtData.factchecks);
+    if (imgData && imgData.factchecks) allFactchecks.push(...imgData.factchecks);
+    const verifyCount = allFactchecks.filter(fc => fc.type === 'verify').length;
+    const isVerifiedByPress = verifyCount >= 2;
+
     const llmExplicitlyFlagged = (imgData && imgData.manipulated === true) || (txtData && txtData.suspicious === true);
     const p6Critical = (phaseScores.p6 ?? 100) <= 40;
+    
     let vetoTriggered = false;
-    if (llmExplicitlyFlagged && p6Critical) {
-      avg = Math.min(avg, 39);
-      vetoTriggered = true;
-    }
-    // Wenn LLM klar "kein Problem" sagt, minimum auf warning setzen (nie Danger nur durch Pixel-Scanner)
-    if (!llmExplicitlyFlagged && (imgData || txtData)) {
-      avg = Math.max(avg, 45); // mindestens "warning"-Zone, nicht danger
+    let level = 'warning'; // default
+    let vt = null;
+
+    if (isVerifiedByPress) {
+      // 🌟 FAKTEN GEWINNEN ÜBER PIXEL-STATISTIK
+      if (txtData && txtData.suspicious) {
+        // Ereignis passierte, aber der Text dazu ist Hetze/Desinformation/übertrieben
+        level = 'warning';
+        vt = { label: '🚨 Echt-Ereignis, aber Text irreführend / problematisch' };
+      } else {
+        // Alles sauber, normales echtes Bild/Ereignis
+        level = 'safe';
+        vt = { label: 'Wahrscheinlich echtes Foto / Bestätigtes Ereignis' };
+      }
+    } else {
+      // 📉 NORMALE KI-LOGIK (Wenn keine Fakten gefunden)
+      if (llmExplicitlyFlagged && p6Critical) {
+        avg = Math.min(avg, 39);
+        vetoTriggered = true;
+      }
+      if (!llmExplicitlyFlagged && (imgData || txtData)) {
+        avg = Math.max(avg, 45); 
+      }
+      
+      level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
+      vt = VERDICT_TEXT[level];
     }
 
-    const level = avg >= 65 ? 'safe' : avg >= 40 ? 'warning' : 'danger';
-    let vt = VERDICT_TEXT[level];
-    
-    // ─── NEU: Wir ignorieren die Zahlen und generischen Texte. 
-    // Der Experte (GPT-4o) spricht Klartext!
+    // ─── Der Experte (GPT-4o) spricht Klartext!
     let expertExplanation = "";
     if (imgData && imgData.explanation) {
       expertExplanation += `📸 Bild-Analyse: ${imgData.explanation} `;
@@ -521,13 +542,10 @@ const EchtCheckUI = (() => {
       expertExplanation += `<br>💬 Text-Befund: ${txtData.summary}`;
     }
 
-    // Fallback falls KI offline war
-    if (!expertExplanation) {
-      expertExplanation = SUMMARY_TEXT[level];
-    }
+    if (!expertExplanation) expertExplanation = SUMMARY_TEXT[level];
 
     if (vetoTriggered) {
-      vt = { ...vt, label: 'Manipulation / Desinformation erkannt' };
+      vt = { label: 'Manipulation / Desinformation erkannt' };
       if (!imgData && !txtData) expertExplanation = 'Die KI-Tiefenanalyse und Forensik hat sehr starke Hinweise auf Bildbearbeitung oder problematische Inhalte gefunden.';
     }
 
